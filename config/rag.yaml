@@ -1,0 +1,229 @@
+# RAG pipeline configuration. Read by Stages 2-4, the evaluator and the app.
+
+# How much of the source books to index.
+#   full   -- the entire books, minus back-of-book index, bibliography and
+#             blank pages. Needed for the topic locator to find anything, and
+#             for the platform to answer beyond tongue cancer.
+#   tongue -- only tongue-cancer content (the original focused corpus).
+selection:
+  mode: full
+
+paths:
+  corpus_dir: "corpus/books"
+  sections_dir: "corpus/books/sections"
+  chunks_file: "corpus/books/chunks.jsonl"
+  manifest_file: "corpus/books/corpus_manifest.jsonl"
+  index_dir: "artifacts/index"
+
+chunking:
+  # Token budget per chunk, measured with the embedding model's own tokenizer.
+  max_tokens: 450
+  overlap_tokens: 80
+  # Chunks never cross a section boundary. A chunk shorter than this is
+  # dropped rather than emitted as a stub (02_build_chunks.py reports the
+  # count); tables use a lower floor of 20 tokens, since a caption plus a
+  # couple of rows is still a usable source.
+  min_tokens: 60
+  # Detected tables are emitted whole even if they exceed max_tokens, up to
+  # this hard ceiling (staging tables must not be split mid-row).
+  table_max_tokens: 1200
+
+embedding:
+  # CPU-sized default. bge-large is 335M params and ~3x slower per query on
+  # this box for near-identical recall over a 988-chunk corpus; bge-base uses
+  # the same BERT tokenizer, so Stage 2's token budgets are unchanged.
+  model: "BAAI/bge-base-en-v1.5"
+  # Alternatives -- swap in, rebuild the index, and let 04_evaluate.py decide:
+  #   model: "BAAI/bge-large-en-v1.5"          # 1024-dim, slower
+  #   model: "NeuML/pubmedbert-base-embeddings"  # biomedical
+  dim: 768
+  batch_size: 64
+  # bge models expect this prefix on the QUERY side only, not on documents.
+  query_prefix: "Represent this sentence for searching relevant passages: "
+  doc_prefix: ""
+  normalize: true
+  max_seq_length: 512
+
+reranker:
+  enabled: true
+  # Leave at the model default (512). Truncating to 256 halves the time and
+  # costs 4 points of Recall@5 (92% -> 88%), which is the wrong trade.
+  max_length: 512
+  # 22M params: scores 30 candidates in well under a second on CPU, where
+  # bge-reranker-v2-m3 (568M) takes 10-20s. Swapping the reranker does NOT
+  # require rebuilding the index, so compare candidates with
+  #   python scripts/04_evaluate.py --reranker <model>
+  model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  # Slower, stronger alternative: "BAAI/bge-reranker-base"
+  batch_size: 32
+
+retrieval:
+  dense_top_k: 50
+  bm25_top_k: 50
+  # Reciprocal Rank Fusion constant. 60 is the value from the original RRF
+  # paper and is not sensitive enough to be worth tuning at this corpus size.
+  rrf_k: 60
+  # How many fused candidates get sent to the cross-encoder.
+  #
+  # Measured, not guessed: 30 candidates gives Recall@5 92% at 1799 ms/query;
+  # 15 gives 96% at 917 ms. Fewer candidates is both faster AND slightly more
+  # accurate here, because a 22M MiniLM trained on web passages starts
+  # promoting spurious matches over the correct chunk once it is asked to
+  # rank a long tail -- RRF had already ordered those better than it can.
+  # Do not raise this expecting better retrieval; re-measure instead.
+  rerank_candidates: 15
+  # Relevance floor for the topic locator (Find mode), on the cross-encoder's
+  # logit scale. Nearest-neighbour search always returns SOMETHING, so without
+  # a floor an unrelated query comes back with five confident-looking page
+  # references. Measured on this corpus: real topics score +2.1..+8.3, queries
+  # the books cannot speak to score -9.7..-2.6, so 0.0 sits between the two
+  # populations with margin on both sides. Far below min_rerank_score, on
+  # purpose -- listing a weak mention is fine, answering from one is not.
+  min_locate_score: 0.0
+
+  # How many chunks end up in the LLM prompt. On CPU the prompt prefill
+  # dominates answer latency (~90 tok/s), so each extra source costs real
+  # seconds; 5 x ~450 tokens is the point where recall stops improving.
+  final_top_k: 5
+
+guard:
+  # --- Layer 1: topic gate (pre-retrieval) -------------------------------
+  topic:
+    # What the platform is willing to answer AT ALL.
+    #   corpus -- anything the two textbooks cover: every disease site,
+    #             radiation physics, radiobiology, systemic therapy. Naming a
+    #             site like "prostate" is then evidence the question is IN
+    #             scope, because the books have a chapter on it.
+    #   tongue -- the original narrow behaviour: tongue cancer and the head &
+    #             neck oncology needed to discuss it; any other disease site
+    #             is refused outright.
+    # Must match paths/selection.mode: "corpus" scope over a tongue-only index
+    # will answer confidently from material that was never indexed.
+    scope: corpus
+
+    # A query is in scope if it is close to one of the canonical seed
+    # questions in rag/guard.py, or (fallback) close to the corpus centroid
+    # AND using oncology vocabulary.
+    #
+    # These are COSINE THRESHOLDS AND THEY ARE EMBEDDER-SPECIFIC: swapping the
+    # embedding model shifts the whole scale. Recalibrate with
+    #   python scripts/04_evaluate.py --apply
+    # which measures the score distribution for in-scope and off-topic
+    # questions and writes the recommended values back into this file.
+    # The values below are written by that command -- do not hand-edit.
+    # --- scope "tongue" only -------------------------------------------
+    # A query must look like one of the canonical seed questions, or sit near
+    # the corpus AND use oncology vocabulary. Strict on purpose: a tongue-only
+    # index genuinely cannot answer about other sites.
+    min_centroid_similarity: 0.47
+    min_seed_similarity: 0.54
+
+    # --- scope "corpus" only -------------------------------------------
+    # Over the whole of both books, layer 1 is only a junk filter: a query is
+    # refused here ONLY if it looks unlike a medical question on BOTH signals.
+    # Everything else goes to retrieval and the grounding gate decides on
+    # evidence, which is the honest test and does not depend on phrasing.
+    #
+    # Measured separation on this index -- real questions 0.490-1.000 seed /
+    # 0.577-0.667 centroid, junk 0.311-0.392 / 0.298-0.433 -- so these sit in
+    # the gap with room on both sides. Written by 04_evaluate.py --apply.
+    junk_max_seed: 0.45
+    junk_max_centroid: 0.50
+    # A query containing an explicit tongue term bypasses the similarity
+    # check entirely (cheap, high-precision shortcut).
+    lexicon_override: true
+    # Only consulted when scope is "tongue": a query naming a DIFFERENT
+    # disease site and no tongue term is refused outright. Ignored under
+    # scope "corpus", where those sites are part of the corpus.
+    reject_on_off_topic_site: true
+
+  # --- Layer 2: grounding gate (post-retrieval) --------------------------
+  grounding:
+    # Cross-encoder scores are logits and their scale is model-specific.
+    # Written by `python scripts/04_evaluate.py --apply` -- do not hand-edit.
+    min_rerank_score: 0.3
+    # Calibration target for min_rerank_score: keep at least this share of the
+    # answerable questions (precise AND broad) answerable. The two score
+    # populations overlap, so a symmetric objective trades real answers for
+    # abstentions that layer 3 would have made anyway -- this says which side
+    # to err on. Lower it to abstain more eagerly at the cost of coverage.
+    min_answer_rate: 0.95
+
+    # How many chunks must clear the threshold before we call the LLM.
+    min_supporting_chunks: 1
+    # Once the gate above has decided there IS evidence, this decides how much
+    # of it the model actually sees: every hit within this much of the best
+    # one, on the cross-encoder's logit scale. Without it, near-ties just below
+    # min_rerank_score are dropped and the model is left with a single source
+    # it cannot corroborate -- which it then declines to answer from.
+    # Raise it to give the model more context, lower it to keep prompts short
+    # (prompt length is the main latency cost on CPU).
+    support_margin: 1.5
+    # Fallback when the reranker is disabled: minimum dense cosine.
+    min_dense_similarity: 0.45
+
+  # --- Layer 3: citation verification (post-generation) ------------------
+  citation:
+    # The LLM is instructed to emit this exact token when the context does
+    # not answer the question. Case-sensitive.
+    sentinel: "ANSWER_NOT_AVAILABLE"
+    # Reject an answer that cites nothing at all.
+    require_at_least_one_citation: true
+    # Reject an answer citing a source number we never supplied.
+    reject_out_of_range_citations: true
+    # When the ONLY fault is missing [n] markers, ask the model once to add
+    # them, re-sending the SOURCES so it can actually see what to cite.
+    #
+    # OFF by default because it was measured and it does not work with
+    # Qwen2.5-1.5B: 0 of 3 known cases recovered, at a cost of 30-60 extra
+    # seconds each. A model that cannot produce citation markers the first
+    # time does not produce them when asked again. The code is kept because
+    # the failure is model-specific -- try `repair_attempts: 1` if you switch
+    # to the 3B or anything larger, and re-measure before trusting it.
+    repair_attempts: 0
+
+messages:
+  not_available: >-
+    The answer is not available in the provided sources.
+  out_of_scope: >-
+    I can only answer questions about clinical oncology that are covered by
+    the two reference textbooks in this corpus -- DeVita's Cancer: Principles
+    & Practice of Oncology and Gunderson & Tepper's Clinical Radiation
+    Oncology.
+
+llm:
+  # Overridden by LLM_BASE_URL / LLM_MODEL / LLM_API_KEY in .env.
+  # Served by scripts/serve_llm.sh -- llama.cpp's OpenAI-compatible server,
+  # running a 4-bit Qwen2.5-3B on CPU. `model` must match the --alias there.
+  # `./start --model 1.5b` switches to the smaller, ~2x faster model and sets
+  # LLM_MODEL to match, so this line needs no edit.
+  base_url: "http://localhost:8000/v1"
+  model: "qwen2.5-3b-instruct"
+  temperature: 0.1
+  # The answer length the user actually sees. Enforced by trimming at a
+  # sentence or bullet boundary (rag.generate.fit_to_length), never by cutting
+  # at whatever word the token budget ran out on -- a mid-clause stop leaves a
+  # fragment with no citation, which reads as broken and can fail verification.
+  # The prompt is told this number too, so trimming is the backstop rather
+  # than the mechanism.
+  max_answer_words: 500
+
+  # Hard ceiling on generation, sized ABOVE max_answer_words (~1.5 tokens per
+  # word once citation markers are counted) so the model reaches a natural
+  # ending on its own and the trimmer rarely has to act. Lowering this to the
+  # word budget would guarantee the mid-sentence cut it exists to avoid.
+  #
+  # A generated token costs ~100ms on this CPU (measured: 10.7 tok/s), so this
+  # is also the worst-case latency knob. `stream: true` below is what makes
+  # the wait bearable -- the text appears as it is written.
+  max_tokens: 800
+
+  # Show the answer as the model writes it instead of after it finishes.
+  # Does not make generation faster -- it makes the wait visible rather than
+  # blank. The streamed text is UNVERIFIED (layer 3 runs on the finished
+  # answer), so the UI marks it provisional and replaces it if it is rejected.
+  # Set false if you would rather never display unverified text at all.
+  stream: true
+  # A cold prompt on CPU can take a minute; the default 120s was sized for a
+  # GPU server.
+  timeout_seconds: 300

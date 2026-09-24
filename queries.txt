@@ -1,0 +1,153 @@
+# 100 example queries for the oncology reference platform.
+#
+# One query per line; blank lines and #-comments are ignored, so this file can
+# be fed straight to a script:
+#
+#     python scripts/ask_batch.py queries.txt            # answer each one
+#     python scripts/ask_batch.py --locate queries.txt   # locate only, no LLM
+#
+# Groups 1-15 are organised to mirror the organ-system taxonomy in
+# config/organ_systems.yaml, so each group also exercises the portal's
+# left-hand section selector: pick "Genitourinary > Prostate" and the group 8
+# questions should still answer while the group 5 ones should not.
+#
+# The last two groups are deliberate. A reference tool is only trustworthy if
+# it behaves correctly on questions it CANNOT answer as well as on ones it
+# can, so group 16 is expected to abstain and group 17 to refuse. If anything
+# in group 17 returns an answer, that is a bug worth chasing.
+
+# --- 1. Tongue and oral cavity (the original focus) ------------------------
+What is the lymphatic drainage of the oral tongue?
+Which are the first echelon nodes for oral tongue cancer?
+At what depth of invasion should elective neck dissection be considered?
+How are early T1 and T2 oral tongue cancers treated?
+What is the role of interstitial implant in oral tongue cancer?
+What are the complications of glossectomy?
+How does HPV status affect base of tongue cancer outcomes?
+What proportion of oral tongue cancer patients have positive nodes at diagnosis?
+What muscles make up the oral tongue and what is their nerve supply?
+How is speech and swallowing rehabilitated after tongue surgery?
+
+# --- 2. Head and neck beyond the tongue ------------------------------------
+How is the N0 neck managed in head and neck squamous cell carcinoma?
+What is the treatment for early glottic laryngeal cancer?
+How is nasopharyngeal carcinoma staged and treated?
+What is the management of an unknown primary in the head and neck?
+How are salivary gland malignancies classified?
+What are the indications for postoperative radiotherapy in head and neck cancer?
+What is extranodal extension and why does it matter?
+How is osteoradionecrosis of the mandible prevented and managed?
+
+# --- 3. Other disease sites (now in scope: whole books indexed) ------------
+What is the standard treatment for locally advanced prostate cancer?
+How is breast cancer staged and what determines adjuvant therapy?
+What chemotherapy regimen is used for non-small cell lung cancer?
+How is glioblastoma treated with radiation and temozolomide?
+What is the role of immunotherapy in metastatic melanoma?
+How is pancreatic adenocarcinoma resected and adjuvantly treated?
+What is the staging system for colorectal cancer?
+How are Hodgkin and non-Hodgkin lymphomas treated differently?
+What is the management of muscle-invasive bladder cancer?
+How is cervical cancer treated with chemoradiation and brachytherapy?
+What are the treatment options for hepatocellular carcinoma?
+
+# --- 4. Radiation physics, radiobiology and systemic therapy ---------------
+What is the linear quadratic model in radiobiology?
+How does fractionation affect normal tissue complication probability?
+What are the dose constraints for the spinal cord?
+How is intensity-modulated radiation therapy planned and delivered?
+What is the difference between a GTV, a CTV and a PTV?
+How does proton therapy differ from photon therapy in dose distribution?
+What is the mechanism of action of cisplatin and its main toxicities?
+What is the management of febrile neutropenia?
+What are the principles of palliative radiotherapy for bone metastases?
+How do oncogenes and tumour suppressor genes drive carcinogenesis?
+What is the role of stereotactic body radiotherapy in early lung cancer?
+
+# --- 5. Central nervous system ---------------------------------------------
+How are low-grade gliomas managed after subtotal resection?
+What radiation dose is used for a benign intracranial meningioma?
+How are pituitary adenomas treated with radiotherapy?
+What is the management of a spinal cord ependymoma?
+How is uveal melanoma treated with plaque brachytherapy?
+
+# --- 6. Thorax --------------------------------------------------------------
+How is limited-stage small cell lung cancer treated?
+What is the management of an invasive thymoma?
+How is malignant pleural mesothelioma treated?
+
+# --- 7. Gastrointestinal ----------------------------------------------------
+What is the role of neoadjuvant chemoradiation in oesophageal carcinoma?
+How is gastric cancer treated after D2 gastrectomy?
+What is the management of borderline resectable pancreatic cancer?
+How is hepatocellular carcinoma treated with stereotactic body radiotherapy?
+What is the treatment for extrahepatic cholangiocarcinoma?
+How is a gastrointestinal stromal tumour treated with imatinib?
+What is total mesorectal excision and when is it indicated?
+
+# --- 8. Genitourinary -------------------------------------------------------
+How is localised renal cell carcinoma managed?
+What is trimodality bladder preservation therapy?
+What are the prostate cancer risk groups and how do they guide treatment?
+How is penile carcinoma treated with organ preservation?
+What is the management of stage I testicular seminoma?
+
+# --- 9. Gynaecological ------------------------------------------------------
+What is the role of the brachytherapy boost in cervical carcinoma?
+How is early-stage endometrial carcinoma treated after hysterectomy?
+What is the treatment for vulvar carcinoma?
+How is advanced ovarian cancer debulked and treated?
+How is gestational trophoblastic neoplasia treated?
+
+# --- 10. Breast -------------------------------------------------------------
+What are the indications for post-mastectomy radiotherapy?
+How is ductal carcinoma in situ managed?
+
+# --- 11. Endocrine ----------------------------------------------------------
+How is differentiated thyroid carcinoma treated with radioactive iodine?
+What is the management of parathyroid carcinoma?
+How is adrenocortical carcinoma treated?
+What is the management of a pancreatic neuroendocrine tumour?
+
+# --- 12. Sarcoma, bone and skin ---------------------------------------------
+When is preoperative rather than postoperative radiotherapy used in soft-tissue sarcoma?
+How is osteosarcoma of the extremity treated?
+Which benign conditions are treated with radiotherapy?
+What is the treatment for basal cell carcinoma of the face?
+When is sentinel lymph node biopsy indicated in cutaneous melanoma?
+
+# --- 13. Haematological and lymphoid ----------------------------------------
+How is early-stage Hodgkin lymphoma treated with combined modality therapy?
+What is the treatment for diffuse large B-cell lymphoma?
+How is mycosis fungoides treated with total skin electron therapy?
+What is the management of primary central nervous system lymphoma?
+How is acute myeloid leukaemia induced and consolidated?
+How are myelodysplastic syndromes risk-stratified?
+When is allogeneic stem cell transplantation indicated in leukaemia?
+
+# --- 14. Paediatric ---------------------------------------------------------
+How is Wilms tumour treated in children?
+What is the management of retinoblastoma?
+How is high-risk neuroblastoma treated?
+What is the treatment for paediatric rhabdomyosarcoma?
+
+# --- 15. Cross-cutting ------------------------------------------------------
+How are brain metastases treated with stereotactic radiosurgery?
+What is the management of malignant spinal cord compression?
+How is carcinoma of unknown primary investigated?
+
+# --- 16. Should ABSTAIN: plausible, on-topic, but not in these books --------
+# Correct behaviour is "the answer is not available in the provided sources",
+# not a confident-sounding guess.
+What were the results of the 2024 KEYNOTE-689 trial?
+What is the NCCN 2025 first-line recommendation for metastatic tongue cancer?
+How much does proton therapy cost in India?
+Which hospital in Mumbai has the best glossectomy outcomes?
+What did the 2023 Indian national cancer registry report as incidence?
+
+# --- 17. Should REFUSE: nothing to do with these textbooks ------------------
+What is the capital of France?
+Write me a poem about the sea.
+How do I fix a Python ImportError?
+Tell me about the history of the Roman Empire.
+What is the best diet for weight loss?

@@ -1,0 +1,117 @@
+# Cross-corpus retrieval coverage.
+#
+# eval/questions.yaml measures recall precisely, but only on tongue cancer --
+# it needs PDF page numbers read off the source, which does not scale to 77
+# pathologies. That left retrieval quality across the rest of both books
+# completely unmeasured, which is a poor position for a platform that now
+# claims to answer across all of clinical oncology.
+#
+# This closes that gap with weaker but automatable ground truth: a question
+# about prostate cancer must retrieve chunks tagged `gu_prostate`. No page
+# numbers to maintain, and the tags come from the publishers' own chapter
+# boundaries rather than from a judgement call.
+#
+# `expect` is a pathology id from config/organ_systems.yaml. `expect_system`
+# is used where a question legitimately spans several pathologies inside one
+# organ system.
+
+questions:
+  # --- head & neck -------------------------------------------------------
+  - q: "What is the lymphatic drainage of the oral tongue?"
+    expect: hn_oral_cavity
+  - q: "How is nasopharyngeal carcinoma staged?"
+    expect: hn_nasopharynx
+  - q: "What is the treatment for early glottic laryngeal cancer?"
+    expect: hn_larynx
+  - q: "How are salivary gland malignancies classified?"
+    expect: hn_salivary
+
+  # --- CNS ---------------------------------------------------------------
+  - q: "How is glioblastoma treated with radiation and temozolomide?"
+    expect_system: cns
+  - q: "What is the management of a pituitary adenoma?"
+    expect: cns_pituitary
+  - q: "How are low-grade gliomas managed?"
+    expect: cns_low_grade_glioma
+
+  # --- thorax ------------------------------------------------------------
+  - q: "What chemotherapy regimen is used for non-small cell lung cancer?"
+    expect: thx_nsclc
+  - q: "How is limited-stage small cell lung cancer treated?"
+    expect: thx_sclc
+  - q: "What is the management of malignant pleural mesothelioma?"
+    expect: thx_mesothelioma
+
+  # --- gastrointestinal --------------------------------------------------
+  - q: "How is rectal cancer treated with neoadjuvant chemoradiation?"
+    expect: gi_rectum
+  - q: "What is the treatment for resectable pancreatic adenocarcinoma?"
+    expect: gi_pancreas
+  - q: "How is anal carcinoma treated?"
+    expect: gi_anal
+  - q: "What is the management of hepatocellular carcinoma?"
+    expect: gi_liver_biliary
+
+  # --- genitourinary -----------------------------------------------------
+  - q: "How is localised prostate cancer treated with radiation?"
+    expect: gu_prostate
+  - q: "What is the management of muscle-invasive bladder cancer?"
+    expect: gu_bladder
+  - q: "How is testicular seminoma managed after orchiectomy?"
+    expect: gu_testis
+
+  # --- gynaecological ----------------------------------------------------
+  - q: "How is cervical cancer treated with chemoradiation and brachytherapy?"
+    expect: gyn_cervix
+  - q: "What is the treatment for endometrial carcinoma?"
+    expect: gyn_uterus
+  - q: "How is ovarian cancer staged and treated?"
+    expect: gyn_ovary
+
+  # --- breast ------------------------------------------------------------
+  - q: "What determines adjuvant therapy in early breast cancer?"
+    expect: breast_cancer
+  - q: "How is ductal carcinoma in situ managed?"
+    expect: breast_cancer
+
+  # --- endocrine ---------------------------------------------------------
+  - q: "How is differentiated thyroid carcinoma treated with radioiodine?"
+    expect: endo_thyroid
+  - q: "What is the management of an adrenocortical carcinoma?"
+    expect: endo_adrenal
+
+  # --- sarcoma and skin --------------------------------------------------
+  - q: "How is a retroperitoneal soft-tissue sarcoma treated?"
+    expect: sarc_soft_tissue
+  - q: "What is the treatment for osteosarcoma of the extremity?"
+    expect: sarc_bone
+  - q: "How is cutaneous melanoma staged?"
+    expect: skin_melanoma
+  - q: "What is the management of basal cell carcinoma?"
+    expect: skin_nonmelanoma
+
+  # --- haematological ----------------------------------------------------
+  - q: "How is early-stage Hodgkin lymphoma treated?"
+    expect: haem_hodgkin
+  - q: "What is the management of diffuse large B-cell lymphoma?"
+    expect: haem_nhl
+  - q: "How is multiple myeloma treated?"
+    expect: haem_myeloma
+  - q: "What is the treatment for chronic myeloid leukaemia?"
+    expect: haem_chronic_leukaemia
+
+  # --- paediatric --------------------------------------------------------
+  - q: "How is Wilms tumour treated in children?"
+    expect: paed_wilms
+  - q: "What is the management of neuroblastoma?"
+    expect: paed_neuroblastoma
+  - q: "How is retinoblastoma treated?"
+    expect: paed_retinoblastoma
+
+  # --- physics and radiobiology (the `general` fallback) -----------------
+  - q: "What is the linear quadratic model in radiobiology?"
+    expect: general
+  - q: "How does intensity-modulated radiation therapy deliver dose?"
+    expect: general
+  - q: "What are the dose constraints for the spinal cord?"
+    expect: general

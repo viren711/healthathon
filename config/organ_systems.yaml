@@ -1,0 +1,320 @@
+# Organ-system / pathology map for the indexed books.
+#
+# Every chunk is tagged with exactly one `pathology`, which rolls up to one
+# `organ_system`. The portal's left-hand selector uses this to restrict both
+# question-answering and the topic locator to a single disease area.
+#
+# Assignment is by CHAPTER, using the page ranges in the PDFs' own embedded
+# outlines. That makes it auditable and stable: a chapter is a thing the
+# publisher defined, not a keyword heuristic that drifts when the lexicon
+# changes.
+#
+# Rules:
+#   * Chapter numbers are per book and must not overlap between pathologies.
+#     scripts/05_tag_pathologies.py fails loudly if they do.
+#   * Pages in no listed chapter fall through to `general` -- radiobiology,
+#     physics, molecular biology of cancer, prevention, supportive care. That
+#     material is real and indexed; it just is not a disease site.
+#   * Classification follows PATHOLOGY, not the book's own table of contents,
+#     where the two disagree. Gunderson files thyroid cancer under head and
+#     neck because that is where it is irradiated; it is tagged endocrine here
+#     because that is what it is. Same for Gunderson ch.47/48 (skin) and
+#     ch.80 (a bone sarcoma, but a paediatric one).
+
+systems:
+  - id: head_neck
+    label: "Head & Neck"
+    pathologies:
+      - id: hn_oral_cavity
+        label: "Oral cavity & tongue"
+        chapters: {gunderson: [38]}
+        # DeVita treats the whole of head and neck in one chapter (45), so
+        # there is no chapter boundary to split the tongue out with. Stage 1
+        # already scored every section against the tongue lexicon and marked
+        # the tongue-specific ones tier "core"; this reuses that judgement
+        # rather than inventing a second one.
+        refine_from_devita_45_core: true
+      - id: hn_oropharynx
+        label: "Oropharynx & base of tongue"
+        chapters: {gunderson: [39]}
+      - id: hn_nasopharynx
+        label: "Nasopharynx"
+        chapters: {gunderson: [40]}
+      - id: hn_larynx
+        label: "Larynx & hypopharynx"
+        chapters: {gunderson: [41]}
+      - id: hn_sinonasal
+        label: "Sinonasal"
+        chapters: {gunderson: [42]}
+      - id: hn_salivary
+        label: "Salivary glands"
+        chapters: {gunderson: [43]}
+      - id: hn_neck
+        label: "Neck nodes & unknown H&N primary"
+        chapters: {gunderson: [45, 46]}
+      - id: hn_general
+        label: "Head & neck (general)"
+        chapters: {gunderson: [37], devita: [44, 45, 46]}
+
+  - id: cns
+    label: "Central Nervous System"
+    pathologies:
+      - id: cns_low_grade_glioma
+        label: "Low-grade glioma"
+        chapters: {gunderson: [31]}
+      - id: cns_high_grade_glioma
+        label: "High-grade glioma & glioblastoma"
+        chapters: {gunderson: [32]}
+      - id: cns_benign_brain
+        label: "Benign brain tumours"
+        chapters: {gunderson: [33]}
+      - id: cns_pituitary
+        label: "Pituitary & craniopharyngioma"
+        chapters: {gunderson: [34]}
+      - id: cns_spinal_cord
+        label: "Spinal cord tumours"
+        chapters: {gunderson: [35]}
+      - id: cns_ocular
+        label: "Ocular & orbital tumours"
+        chapters: {gunderson: [36], devita: [111]}
+      - id: cns_general
+        label: "CNS (general)"
+        chapters: {gunderson: [30], devita: [93, 94]}
+
+  - id: thoracic
+    label: "Thorax & Lung"
+    pathologies:
+      - id: thx_nsclc
+        label: "Non-small-cell lung cancer"
+        chapters: {devita: [47, 48], gunderson: [51]}
+      - id: thx_sclc
+        label: "Small cell & neuroendocrine lung"
+        chapters: {devita: [49], gunderson: [50]}
+      - id: thx_mediastinum
+        label: "Mediastinum & uncommon thoracic"
+        chapters: {devita: [50], gunderson: [52]}
+      - id: thx_mesothelioma
+        label: "Mesothelioma"
+        chapters: {devita: [109]}
+      - id: thx_general
+        label: "Thoracic (general)"
+        chapters: {gunderson: [49]}
+
+  - id: gi
+    label: "Gastrointestinal"
+    pathologies:
+      - id: gi_esophagus
+        label: "Oesophagus & stomach"
+        chapters: {devita: [51, 52, 53], gunderson: [54]}
+      - id: gi_pancreas
+        label: "Pancreas"
+        chapters: {devita: [54, 55], gunderson: [55]}
+      - id: gi_liver_biliary
+        label: "Liver & biliary tree"
+        chapters: {devita: [56, 57, 58], gunderson: [56]}
+      - id: gi_small_bowel
+        label: "Small bowel"
+        chapters: {devita: [59]}
+      - id: gi_gist
+        label: "Gastrointestinal stromal tumour"
+        chapters: {devita: [60]}
+      - id: gi_colon
+        label: "Colon"
+        chapters: {devita: [61, 62], gunderson: [57]}
+      - id: gi_rectum
+        label: "Rectum"
+        chapters: {devita: [63], gunderson: [58]}
+      - id: gi_anal
+        label: "Anal region"
+        chapters: {devita: [64], gunderson: [59]}
+      - id: gi_peritoneal
+        label: "Peritoneal disease"
+        chapters: {devita: [110]}
+      - id: gi_general
+        label: "Gastrointestinal (general)"
+        chapters: {gunderson: [53]}
+
+  - id: gu
+    label: "Genitourinary"
+    pathologies:
+      - id: gu_kidney
+        label: "Kidney & ureter"
+        chapters: {devita: [65, 66], gunderson: [64]}
+      - id: gu_bladder
+        label: "Bladder"
+        chapters: {devita: [67, 68], gunderson: [62]}
+      - id: gu_prostate
+        label: "Prostate"
+        chapters: {devita: [69, 70], gunderson: [61]}
+      - id: gu_penis_urethra
+        label: "Penis & urethra"
+        chapters: {devita: [71], gunderson: [65]}
+      - id: gu_testis
+        label: "Testis"
+        chapters: {devita: [72], gunderson: [63]}
+      - id: gu_general
+        label: "Genitourinary (general)"
+        chapters: {gunderson: [60]}
+
+  - id: gyn
+    label: "Gynaecological"
+    pathologies:
+      - id: gyn_cervix
+        label: "Cervix"
+        chapters: {devita: [74], gunderson: [67]}
+      - id: gyn_uterus
+        label: "Uterine body & endometrium"
+        chapters: {devita: [75], gunderson: [68]}
+      - id: gyn_vulva_vagina
+        label: "Vulva & vagina"
+        chapters: {gunderson: [69]}
+      - id: gyn_ovary
+        label: "Ovary"
+        chapters: {devita: [77], gunderson: [70]}
+      - id: gyn_trophoblastic
+        label: "Gestational trophoblastic neoplasia"
+        chapters: {devita: [76]}
+      - id: gyn_general
+        label: "Gynaecological (general)"
+        chapters: {devita: [73], gunderson: [66]}
+
+  - id: breast
+    label: "Breast"
+    pathologies:
+      - id: breast_cancer
+        label: "Breast cancer"
+        chapters: {devita: [78, 79], gunderson: [71, 72, 73, 74]}
+
+  - id: endocrine
+    label: "Endocrine"
+    pathologies:
+      - id: endo_thyroid
+        label: "Thyroid"
+        chapters: {devita: [81], gunderson: [44]}
+      - id: endo_parathyroid
+        label: "Parathyroid"
+        chapters: {devita: [82]}
+      - id: endo_adrenal
+        label: "Adrenal"
+        chapters: {devita: [83]}
+      - id: endo_neuroendocrine
+        label: "Neuroendocrine & carcinoid"
+        chapters: {devita: [84, 85]}
+      - id: endo_men
+        label: "Multiple endocrine neoplasia"
+        chapters: {devita: [86]}
+      - id: endo_general
+        label: "Endocrine (general)"
+        chapters: {devita: [80]}
+
+  - id: sarcoma
+    label: "Sarcoma & Bone"
+    pathologies:
+      - id: sarc_soft_tissue
+        label: "Soft-tissue sarcoma"
+        chapters: {devita: [88], gunderson: [75]}
+      - id: sarc_bone
+        label: "Bone sarcoma"
+        chapters: {devita: [89]}
+      - id: sarc_general
+        label: "Sarcoma (general)"
+        chapters: {devita: [87]}
+      - id: benign_disease
+        label: "Benign disease treated with radiation"
+        chapters: {gunderson: [76]}
+
+  - id: skin
+    label: "Skin"
+    pathologies:
+      - id: skin_nonmelanoma
+        label: "Non-melanoma skin cancer"
+        chapters: {devita: [90], gunderson: [47]}
+      - id: skin_melanoma
+        label: "Cutaneous melanoma"
+        chapters: {devita: [91, 92], gunderson: [48]}
+
+  - id: haematological
+    label: "Haematological & Lymphoid"
+    pathologies:
+      - id: haem_hodgkin
+        label: "Hodgkin lymphoma"
+        chapters: {devita: [97], gunderson: [88]}
+      - id: haem_nhl
+        label: "Non-Hodgkin lymphoma"
+        chapters: {devita: [98], gunderson: [89]}
+      - id: haem_cutaneous_lymphoma
+        label: "Cutaneous lymphoma & mycosis fungoides"
+        chapters: {devita: [99], gunderson: [91]}
+      - id: haem_cns_lymphoma
+        label: "Primary CNS lymphoma"
+        chapters: {devita: [100]}
+      - id: haem_acute_leukaemia
+        label: "Acute leukaemias"
+        chapters: {devita: [101, 102]}
+      - id: haem_chronic_leukaemia
+        label: "Chronic leukaemias"
+        chapters: {devita: [103, 104, 105]}
+      - id: haem_mds
+        label: "Myelodysplastic syndromes"
+        chapters: {devita: [106]}
+      - id: haem_myeloma
+        label: "Plasma cell neoplasms & myeloma"
+        chapters: {devita: [107], gunderson: [90]}
+      - id: haem_transplant
+        label: "Stem cell transplantation"
+        chapters: {devita: [123, 124]}
+      - id: haem_general
+        label: "Haematological (general)"
+        chapters: {devita: [96], gunderson: [87]}
+
+  - id: paediatric
+    label: "Paediatric"
+    pathologies:
+      - id: paed_cns
+        label: "Paediatric CNS tumours"
+        chapters: {gunderson: [78]}
+      - id: paed_sarcoma
+        label: "Paediatric sarcomas (soft tissue & bone)"
+        chapters: {gunderson: [79, 80]}
+      - id: paed_wilms
+        label: "Wilms tumour"
+        chapters: {gunderson: [81]}
+      - id: paed_retinoblastoma
+        label: "Retinoblastoma"
+        chapters: {gunderson: [82]}
+      - id: paed_neuroblastoma
+        label: "Neuroblastoma"
+        chapters: {gunderson: [83]}
+      - id: paed_leuk_lymphoma
+        label: "Paediatric leukaemia & lymphoma"
+        chapters: {gunderson: [84, 85]}
+      - id: paed_rare
+        label: "Rare paediatric tumours"
+        chapters: {gunderson: [86]}
+      - id: paed_general
+        label: "Paediatric / AYA (general)"
+        chapters: {gunderson: [77], devita: [95]}
+
+  - id: cross_cutting
+    label: "Cross-cutting"
+    pathologies:
+      - id: cc_unknown_primary
+        label: "Cancer of unknown primary"
+        chapters: {devita: [108]}
+      - id: cc_metastatic
+        label: "Metastatic disease by target organ"
+        chapters: {devita: [116, 117, 118, 119, 120, 121, 122]}
+      - id: cc_emergencies
+        label: "Oncologic emergencies"
+        chapters: {devita: [112, 113, 114, 115]}
+      - id: cc_supportive
+        label: "Infection & marrow toxicity"
+        chapters: {devita: [125, 126]}
+
+# Everything not matched above. Radiobiology, physics, imaging, systemic
+# therapy principles, prevention, screening, palliative and supportive care.
+fallback:
+  id: general
+  label: "General oncology, physics & radiobiology"
+  system: general
+  system_label: "General & Cross-cutting"

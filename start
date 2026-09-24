@@ -1,0 +1,222 @@
+#!/usr/bin/env bash
+# Start the whole platform, and stop it again when this terminal goes away.
+#
+#     ./start                 # from the project directory
+#     ./start --model 1.5b    # smaller generator: ~2x faster, but it transcribes
+#     ./start --port 8600     # different UI port
+#     ./start --no-llm        # retrieval + topic locator only, no generator
+#
+# Closing this terminal stops everything. ./stop does the same from anywhere,
+# and is what to reach for if a previous run was killed and left orphans.
+#
+# Measured on eval/questions.yaml (25 precise + 12 broad questions):
+#   3b (default)  32/37 answered, ~34 s/question, 6-44% of text copied verbatim
+#   1.5b          29/37 answered, ~22 s/question, 68-82% copied verbatim
+# The 1.5B transcribes its sources rather than answering, and drops broad
+# questions by omitting citation markers. Speed is the only thing it wins.
+#
+# Everything runs as a child of THIS shell, deliberately: no nohup, no setsid,
+# no disown. Closing the terminal sends SIGHUP here, the trap below fires, and
+# both the model server and the web UI are torn down with it. That is the
+# behaviour asked for -- nothing survives the window it was started from.
+#
+# Each service is started under job control (`set -m`) so it gets its own
+# process group, which lets us kill the whole tree. Streamlit in particular
+# forks a file-watcher child that a plain `kill <pid>` would orphan.
+
+set -uo pipefail
+cd "$(dirname "$0")"
+
+UI_PORT=8501
+LLM_PORT=8000
+WITH_LLM=1
+MODEL_CHOICE=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --port)     UI_PORT="$2"; shift 2 ;;
+        --llm-port) LLM_PORT="$2"; shift 2 ;;
+        --no-llm)   WITH_LLM=0; shift ;;
+        --model)
+            case "$2" in
+                1.5b|1.5B) MODEL_CHOICE=1.5b ;;
+                3b|3B)     MODEL_CHOICE=3b ;;
+                *) echo "--model takes 1.5b or 3b" >&2; exit 2 ;;
+            esac
+            shift 2 ;;
+        -h|--help)  sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "unknown option: $1" >&2; exit 2 ;;
+    esac
+done
+
+PYTHON=python3
+[[ -x .venv/bin/python ]] && PYTHON=.venv/bin/python
+
+# Both models are served under the SAME alias, and LLM_MODEL is exported to
+# match, so config/rag.yaml needs no edit to switch between them.
+if [[ "$MODEL_CHOICE" == "3b" ]]; then
+    export GGUF_FILE="Qwen2.5-3B-Instruct-Q4_K_M.gguf"
+    export ALIAS="qwen2.5-3b-instruct"
+    export LLM_MODEL="qwen2.5-3b-instruct"
+elif [[ "$MODEL_CHOICE" == "1.5b" ]]; then
+    export GGUF_FILE="Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"
+    export ALIAS="qwen2.5-1.5b-instruct"
+    export LLM_MODEL="qwen2.5-1.5b-instruct"
+fi
+
+bold() { printf '\033[1m%s\033[0m\n' "$*"; }
+warn() { printf '\033[33m%s\033[0m\n' "$*"; }
+fail() { printf '\033[31m%s\033[0m\n' "$*" >&2; }
+
+# --- preflight -------------------------------------------------------------
+if [[ ! -x "$PYTHON" && "$PYTHON" != python3 ]]; then
+    fail "no interpreter at $PYTHON"; exit 1
+fi
+
+INDEX_DIR=$("$PYTHON" - <<'PY' 2>/dev/null
+import sys; sys.path.insert(0, ".")
+from rag.config import path_of
+print(path_of("index_dir"))
+PY
+)
+if [[ -z "${INDEX_DIR:-}" || ! -f "$INDEX_DIR/index_meta.json" ]]; then
+    fail "No index found${INDEX_DIR:+ at $INDEX_DIR}."
+    fail "Build it first:  bash scripts/run_all.sh"
+    exit 1
+fi
+
+GGUF_DEFAULT="models/gguf/Qwen2.5-3B-Instruct-Q4_K_M.gguf"
+if (( WITH_LLM )) && [[ ! -f "${GGUF_FILE:-$GGUF_DEFAULT}" && ! -f "models/gguf/${GGUF_FILE:-}" ]]; then
+    warn "Generator weights not found -- starting without it."
+    warn "Fetch them with:  bash scripts/00_fetch_models.sh"
+    WITH_LLM=0
+fi
+
+port_busy() { "$PYTHON" -c "
+import socket,sys
+s=socket.socket()
+sys.exit(0 if s.connect_ex(('127.0.0.1', int(sys.argv[1])))==0 else 1)
+" "$1"; }
+
+for spec in "$LLM_PORT:model server" "$UI_PORT:web UI"; do
+    port="${spec%%:*}"; what="${spec##*:}"
+    if port_busy "$port"; then
+        fail "Port $port is already in use ($what)."
+        fail "  ./stop            stop whatever this project left running"
+        fail "  ./stop --status   see what is holding it"
+        fail "  ./start --port <other> / --llm-port <other>   use different ports"
+        exit 1
+    fi
+done
+
+mkdir -p logs
+
+# --- teardown --------------------------------------------------------------
+PIDS=()
+
+cleanup() {
+    trap - EXIT INT TERM HUP
+    echo
+    bold "Shutting down..."
+    # Negative PID = the whole process group, so Streamlit's watcher child and
+    # llama-server's threads go too rather than being reparented to init.
+    for pid in "${PIDS[@]:-}"; do
+        [[ -n "$pid" ]] && kill -TERM -"$pid" 2>/dev/null
+    done
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        local alive=0
+        for pid in "${PIDS[@]:-}"; do
+            [[ -n "$pid" ]] && kill -0 -"$pid" 2>/dev/null && alive=1
+        done
+        (( alive )) || break
+        sleep 0.3
+    done
+    for pid in "${PIDS[@]:-}"; do
+        [[ -n "$pid" ]] && kill -KILL -"$pid" 2>/dev/null
+    done
+    echo "  stopped."
+}
+trap cleanup EXIT INT TERM HUP
+
+# Job control: each background command becomes its own process group leader.
+set -m
+
+# --- model server ----------------------------------------------------------
+if (( WITH_LLM )); then
+    bold "Starting model server on :$LLM_PORT ..."
+    PORT="$LLM_PORT" bash scripts/serve_llm.sh > logs/llama_server.log 2>&1 &
+    PIDS+=($!)
+
+    printf '  loading weights'
+    ready=0
+    for _ in $(seq 60); do
+        if curl -s -m 2 "http://127.0.0.1:$LLM_PORT/health" 2>/dev/null | grep -q ok; then
+            ready=1; break
+        fi
+        printf '.'; sleep 2
+    done
+    echo
+    if (( ready )); then
+        echo "  model ready."
+        # Prime the KV cache with the real system prompt. llama.cpp reuses a
+        # shared prefix across requests, so paying for those ~700 tokens once
+        # here takes several seconds off whatever the user asks first.
+        "$PYTHON" - <<'WARMPY' > /dev/null 2>&1 &
+import json, sys, urllib.request
+sys.path.insert(0, ".")
+try:
+    from rag.config import load_config
+    from rag.generate import SYSTEM_PROMPT
+    cfg = load_config()
+    system = SYSTEM_PROMPT.format(sentinel=cfg["guard"]["citation"]["sentinel"])
+    body = {"model": cfg["llm"]["model"],
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": "ready?"}],
+            "max_tokens": 1}
+    req = urllib.request.Request(
+        cfg["llm"]["base_url"].rstrip("/") + "/chat/completions",
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"})
+    urllib.request.urlopen(req, timeout=180).read()
+except Exception:
+    pass
+WARMPY
+        # Detach it: the final `wait -n` returns as soon as ANY child exits,
+        # so leaving the warmup as a tracked job would fire the shutdown trap
+        # the moment it finished and take the whole platform down with it.
+        disown $! 2>/dev/null || true
+    else
+        warn "  model did not come up in time -- see logs/llama_server.log"
+        warn "  The portal still works for topic lookup and retrieval."
+    fi
+else
+    bold "Starting without a model server (retrieval + topic locator only)."
+fi
+
+# --- web UI ----------------------------------------------------------------
+bold "Starting the portal on :$UI_PORT ..."
+# LLM_MODEL is exported above when --model was given, so the child inherits
+# it; passing it inline would set it to the empty string when it was not.
+LLM_BASE_URL="http://127.0.0.1:$LLM_PORT/v1" \
+    "$PYTHON" -m streamlit run app/streamlit_app.py \
+        --server.port "$UI_PORT" \
+        --server.headless true \
+        --browser.gatherUsageStats false \
+        > logs/streamlit.log 2>&1 &
+PIDS+=($!)
+
+for _ in $(seq 40); do
+    curl -s -m 2 "http://127.0.0.1:$UI_PORT/_stcore/health" 2>/dev/null | grep -q ok && break
+    sleep 0.5
+done
+
+echo
+bold "  Open:  http://localhost:$UI_PORT"
+echo   "  Logs:  logs/streamlit.log, logs/llama_server.log"
+echo
+echo   "  Press Ctrl+C, or just close this terminal, to stop everything."
+echo
+
+# Wait on the children. `wait` returns when one exits or a signal arrives;
+# either way the EXIT trap does the teardown.
+wait -n 2>/dev/null || wait

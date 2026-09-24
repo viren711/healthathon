@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+# Stop the platform: the supervisor, the model server and the web UI.
+#
+#     ./stop              # graceful, then force anything that ignores it
+#     ./stop --status     # show what is running, change nothing
+#     ./stop --force      # skip straight to SIGKILL
+#
+# ./start already tears everything down when its terminal closes or on Ctrl+C.
+# This is for the cases where that did not happen: the supervisor was killed
+# with -9 and left its children orphaned, a run was backgrounded and forgotten,
+# or a previous instance is holding port 8000 and the next ./start refuses to
+# boot. That last one is the common one.
+#
+# IMPORTANT -- how processes are identified. Matching `pkill -f streamlit`
+# would kill someone else's Streamlit, and matching `-f start` would match this
+# very script's own command line (a mistake made more than once while building
+# this). So a process is only a target if BOTH hold:
+#
+#   1. its command line matches one of this project's own programs, and
+#   2. /proc/<pid>/cwd is literally THIS directory.
+#
+# The second condition is what makes it safe: another checkout of this project,
+# or an unrelated llama-server, has a different working directory and is left
+# alone.
+
+set -uo pipefail
+cd "$(dirname "$0")"
+ROOT="$PWD"
+
+FORCE=0
+STATUS_ONLY=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --force)  FORCE=1; shift ;;
+        --status) STATUS_ONLY=1; shift ;;
+        -h|--help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "unknown option: $1" >&2; exit 2 ;;
+    esac
+done
+
+bold() { printf '\033[1m%s\033[0m\n' "$*"; }
+dim()  { printf '\033[2m%s\033[0m\n' "$*"; }
+
+PYTHON=python3
+[[ -x .venv/bin/python ]] && PYTHON=.venv/bin/python
+
+# Never target ourselves or the shell that launched us.
+EXCLUDE=" $$ $PPID "
+
+belongs_here() {
+    local cwd
+    cwd=$(readlink -f "/proc/$1/cwd" 2>/dev/null) || return 1
+    [[ "$cwd" == "$ROOT" ]]
+}
+
+# Emits "pid<TAB>label" for each of our processes, supervisor last so that
+# killing it cannot orphan the children we have not signalled yet.
+find_targets() {
+    local children="" supervisors=""
+    while read -r pid args; do
+        [[ "$EXCLUDE" == *" $pid "* ]] && continue
+        [[ "$args" == *"/stop"* ]] && continue
+        belongs_here "$pid" || continue
+        case "$args" in
+            *llama-server*)                 children+="$pid\tmodel server\n" ;;
+            *streamlit*app/streamlit_app.py*) children+="$pid\tweb UI\n" ;;
+            *bash\ ./start*|*bash\ start*)  supervisors+="$pid\tsupervisor (./start)\n" ;;
+        esac
+    done < <(ps -eo pid=,args=)
+    printf "%b%b" "$children" "$supervisors"
+}
+
+port_pid() {  # a port held by anything, as a last-resort report
+    "$PYTHON" - "$1" <<'PY' 2>/dev/null
+import socket, sys
+s = socket.socket(); s.settimeout(0.5)
+print("busy" if s.connect_ex(("127.0.0.1", int(sys.argv[1]))) == 0 else "free")
+PY
+}
+
+report_ports() {
+    for p in 8000 8501; do
+        printf '  port %-5s %s\n' "$p" "$(port_pid "$p")"
+    done
+}
+
+mapfile -t TARGETS < <(find_targets)
+
+if (( STATUS_ONLY )); then
+    bold "Status"
+    if (( ${#TARGETS[@]} == 0 )); then
+        echo "  nothing from this directory is running"
+    else
+        for row in "${TARGETS[@]}"; do
+            printf '  %-8s %s\n' "${row%%$'\t'*}" "${row##*$'\t'}"
+        done
+    fi
+    report_ports
+    exit 0
+fi
+
+if (( ${#TARGETS[@]} == 0 )); then
+    bold "Nothing to stop."
+    dim  "  No ./start, model server or portal is running from $ROOT."
+    report_ports
+    exit 0
+fi
+
+bold "Stopping ${#TARGETS[@]} process(es)..."
+for row in "${TARGETS[@]}"; do
+    pid="${row%%$'\t'*}"
+    printf '  %-8s %s\n' "$pid" "${row##*$'\t'}"
+done
+
+signal_all() {  # $1 = signal
+    for row in "${TARGETS[@]}"; do
+        pid="${row%%$'\t'*}"
+        # Negative pid first: ./start puts each service in its own process
+        # group, so this also takes Streamlit's file-watcher child, which a
+        # plain kill would reparent to init and leave holding the port.
+        kill "-$1" "-$pid" 2>/dev/null || kill "-$1" "$pid" 2>/dev/null || true
+    done
+}
+
+still_alive() {
+    local n=0
+    for row in "${TARGETS[@]}"; do
+        pid="${row%%$'\t'*}"
+        kill -0 "$pid" 2>/dev/null && n=$((n + 1))
+    done
+    echo "$n"
+}
+
+if (( FORCE )); then
+    signal_all KILL
+else
+    signal_all TERM
+    for _ in $(seq 20); do
+        [[ "$(still_alive)" == "0" ]] && break
+        sleep 0.3
+    done
+    if [[ "$(still_alive)" != "0" ]]; then
+        dim "  some processes ignored SIGTERM; escalating"
+        signal_all KILL
+    fi
+fi
+
+sleep 1
+left=$(still_alive)
+echo
+if [[ "$left" == "0" ]]; then
+    bold "Stopped."
+else
+    bold "$left process(es) would not die."
+    dim  "  Try: ./stop --force"
+fi
+report_ports
+[[ "$left" == "0" ]] || exit 1

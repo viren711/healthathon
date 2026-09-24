@@ -1,0 +1,229 @@
+# Source-book registry for the tongue-cancer corpus extraction (Stage 1).
+#
+# All page numbers are 1-based PDF page numbers (what you type into a PDF
+# viewer's "go to page" box), NOT the printed page numbers in the book.
+# The two differ: e.g. Gunderson PDF page 872 carries printed page 612.
+
+books:
+  - id: devita
+    title: "DeVita, Hellman & Rosenberg's Cancer: Principles & Practice of Oncology"
+    short: "DeVita"
+    path: "data/DeVita_Hellman_and_Rosenbergs_Cancer.pdf"
+    pages: 4360
+
+    # Layout: single-column prose. No printed page numbers in the text layer,
+    # so citations fall back to the PDF page number.
+    has_printed_page_numbers: false
+
+    # Watermark stamped on 2129 of the 4360 pages.
+    strip_patterns:
+      - "Dr\\. AVR @ TMH"
+
+    # Section 1 "Cancer of the Head and Neck" -- chapters 44, 45, 46.
+    # Verified: p985 section divider, p986 ch.44 opener, p998 ch.45 opener,
+    # p1097 ch.46 opener, p1113 next section divider.
+    windows:
+      - {start: 985, end: 1112, label: "Section 1: Cancer of the Head and Neck"}
+
+    # Hard exclusions. The back-of-book index matches the tongue lexicon
+    # constantly ("Tongue cancer, 1026-1030") and would poison retrieval.
+    exclude_windows:
+      - {start: 4270, end: 4360, label: "Back-of-book index"}
+      - {start: 1, end: 120, label: "Front matter / contributors / TOC"}
+
+    # NOTE: this hand-written map is now only a FALLBACK. Stage 1 derives the
+    # chapter boundaries from the PDF's own embedded outline (145 chapters for
+    # this book), because a partial hand-written map is actively dangerous in
+    # full-book mode: pages outside it get no chapter, and every chunk on them
+    # inherited whichever chapter was last set -- mislabelling 75% of DeVita's
+    # citations as "ch.46 Rehabilitation After Treatment of Head and Neck
+    # Cancer". Set `use_pdf_outline: false` to force these values instead.
+    #
+    # The boundaries below were read off the PDF directly and cover only the
+    # head & neck chapters, which was sufficient when only those were indexed.
+    chapter_map:
+      - {num: 44, title: "The Molecular Biology of Head and Neck Cancers", start: 986, end: 997}
+      - {num: 45, title: "Cancer of the Head and Neck", start: 998, end: 1096}
+      - {num: 46, title: "Rehabilitation After Treatment of Head and Neck Cancer", start: 1097, end: 1112}
+
+  - id: gunderson
+    title: "Gunderson & Tepper's Clinical Radiation Oncology"
+    short: "Gunderson"
+    path: "data/GUNDERSON AND TEPPER'S.pdf"
+    pages: 2300
+
+    # Layout: two-column. MUST be extracted in reading order -- pdftotext
+    # -layout interleaves the columns and drops figure labels mid-sentence.
+    has_printed_page_numbers: true
+
+    strip_patterns: []
+
+    # Section III head & neck chapters 37-46, verified by running-header scan:
+    #   37 Overview                     848-859
+    #   38 Oral Cavity                  861-889   <- core (oral tongue)
+    #   39 Oropharyngeal Cancer         893-941   <- core (base of tongue)
+    #   40 Nasopharyngeal Carcinoma     944-968
+    #   41 Larynx and Hypopharynx       971-998
+    #   42 Sinonasal Cancer            1000-1037
+    #   43 Salivary Gland Malignancies 1040-1060
+    #   44 Thyroid Cancer              1063-1084
+    #   45 Unknown H&N Primary Site    1086-1092
+    #   46 Management of the Neck      1096-1125 <- core support (nodal CTV)
+    windows:
+      - {start: 848, end: 1125, label: "Section III: Head and Neck disease sites"}
+
+    exclude_windows:
+      - {start: 1, end: 30, label: "Front matter / contributors"}
+
+    # Running header carries chapter number, chapter title and printed page.
+    # In reading order these land on TWO separate lines, not one:
+    #   "CHAPTER 38 Oral Cavity" / "611"        (recto)
+    #   "612" / "SECTION III Disease Sites"     (verso)
+    # so the page number is matched separately as a bare-number line adjacent
+    # to the chapter/section line.
+    running_header_regex: '^\s*CHAPTER\s+(?P<num>\d{1,3})\s+(?P<title>[^\d].*?)\s*$'
+    running_footer_regex: '^\s*SECTION\s+[IVX]+\s+(?P<title>.+?)\s*$'
+    printed_page_regex: '^\s*(?P<page>\d{1,4}(?:\.e\d+)?)\s*$'
+
+
+# ---------------------------------------------------------------------------
+# Relevance lexicons. Used by Stage 1 to tier each section and by the
+# topic gate at query time (rag/guard.py reads the same lists).
+# ---------------------------------------------------------------------------
+
+lexicon:
+  # A section matching any of these is tier "core" -- it is directly about
+  # the tongue. Matched case-insensitively on word boundaries.
+  tongue:
+    - tongue
+    - oral tongue
+    - base of tongue
+    - tongue base
+    - glossectomy
+    - hemiglossectomy
+    - glossal
+    - glossotonsillar
+    - lingual artery
+    - lingual nerve
+    - lingual tonsil
+    - glossopharyngeal
+
+  # A section inside a head & neck window matching any of these is tier
+  # "context" -- not about the tongue itself, but needed to answer real
+  # tongue-cancer questions (staging, nodal management, chemoRT, toxicity).
+  support:
+    - neck dissection
+    - cervical lymph node
+    - level I
+    - level II
+    - level III
+    - level IV
+    - level V
+    - nodal
+    - N stage
+    - N0
+    - N1
+    - N2
+    - N3
+    - T1
+    - T2
+    - T3
+    - T4
+    - TNM
+    - AJCC
+    - staging
+    - depth of invasion
+    - extranodal extension
+    - oral cavity
+    - oropharynx
+    - oropharyngeal
+    - floor of mouth
+    - squamous cell carcinoma
+    - HNSCC
+    - head and neck
+    - HPV
+    - p16
+    - chemoradiation
+    - chemoradiotherapy
+    - cisplatin
+    - cetuximab
+    - carboplatin
+    - docetaxel
+    - induction chemotherapy
+    - brachytherapy
+    - interstitial implant
+    - intensity-modulated
+    - IMRT
+    - mucositis
+    - xerostomia
+    - osteoradionecrosis
+    - dysphagia
+    - trismus
+    - free flap
+    - reconstruction
+    - speech
+    - swallowing
+    - sentinel lymph node
+    - perineural invasion
+    - margin
+
+  # Terms that, if dominant in a query, mean the question is about a
+  # different disease site entirely. Used by the topic gate to refuse.
+  off_topic_sites:
+    - prostate
+    - breast
+    - lung
+    - colorectal
+    - colon
+    - rectal
+    - pancrea
+    - glioma
+    - glioblastoma
+    - melanoma
+    - lymphoma
+    - leukemia
+    - myeloma
+    - ovarian
+    - cervical cancer
+    - endometrial
+    - bladder
+    - renal cell
+    - testicular
+    - sarcoma
+    - esophag
+    - gastric
+    - hepatocellular
+    - thyroid
+    - nasopharyn
+    - larynx
+    - laryngeal
+    - sinonasal
+    - salivary
+
+
+# ---------------------------------------------------------------------------
+# Page-type classification thresholds (Stage 1, step 2).
+# ---------------------------------------------------------------------------
+
+page_classifier:
+  # A page is an "index" page if this fraction of its non-blank lines look
+  # like back-of-book index entries ("Somatostatinomas, 1363").
+  index_line_ratio: 0.55
+  # A page is a "references" page if this fraction of lines look like
+  # numbered bibliography entries ("12. Smith J, et al. Lancet 2010;...").
+  reference_line_ratio: 0.45
+  # Below this many characters of prose, a page is figure/table-only and we
+  # keep just its captions.
+  min_prose_chars: 400
+  # A line repeating on more than this many pages of a book is a running
+  # header/footer and is stripped.
+  running_line_min_pages: 15
+
+selection:
+  # Whole-book sweep: any body page ANYWHERE in the book with at least this
+  # many tongue-lexicon hits is pulled in as "context", even outside the
+  # head & neck windows. This is what recovers DeVita's "Sequelae of Oral
+  # Complications" (p3671-3673) and similar scattered material.
+  sweep_min_tongue_hits: 2
+  # Minimum characters for a section to be worth keeping at all.
+  min_section_chars: 200

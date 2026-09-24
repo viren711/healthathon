@@ -1,0 +1,29 @@
+# Pinned to the versions verified working in .venv on this CPU-only box
+# (Ubuntu 24.04, Python 3.12, AMD Ryzen 5 5600G -- AVX2, no AVX-512, no GPU).
+#
+#   python3 -m venv .venv && . .venv/bin/activate
+#   pip install -r requirements.txt
+#
+# torch is the CPU wheel on purpose; installing the default CUDA build pulls
+# ~2.5 GB of unusable libraries. Install it from the CPU index:
+#   pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+
+# --- Stage 1: PDF extraction ------------------------------------------------
+pymupdf==1.28.2
+PyYAML==6.0.3
+
+# --- Stages 2-3: chunking, embedding, indexing ------------------------------
+torch==2.14.0
+transformers==5.17.0
+sentence-transformers==6.0.1
+faiss-cpu==1.15.0
+rank-bm25==0.2.2
+numpy==2.5.3
+scikit-learn==1.9.1
+
+# --- Stage 4 + app ----------------------------------------------------------
+streamlit==1.63.0
+
+# The generator is NOT a Python package: scripts/00_fetch_models.sh downloads
+# a prebuilt llama.cpp llama-server binary and a GGUF. This machine has no C
+# compiler or cmake, so llama-cpp-python cannot be built from source here.

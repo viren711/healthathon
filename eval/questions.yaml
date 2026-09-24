@@ -1,0 +1,132 @@
+# Evaluation set for scripts/04_evaluate.py.
+#
+# Four buckets, because the platform has four distinct obligations:
+#   answerable     -> must answer, citing the right part of the books
+#   in_scope_other -> covered by the books but outside the tongue chapters;
+#                     the topic gate must NOT refuse these. No page
+#                     expectations -- this bucket tests scope, not recall.
+#   unanswerable   -> plausible and on-topic, but the books do not cover it;
+#                     the app MUST abstain instead of improvising
+#   off_topic      -> nothing to do with these textbooks; MUST be refused
+#
+# `expect_pages` lists PDF pages whose content should appear among the
+# retrieved chunks. They were read off the source PDFs, not guessed.
+#
+# NOTE: since the corpus went to full-book mode (selection.mode: full) the
+# books cover every disease site, so questions about prostate, breast, lung
+# or glioblastoma are IN scope and moved from off_topic to in_scope_other.
+# Only genuinely non-oncological questions belong in off_topic now.
+
+answerable:
+  - q: "What is the lymphatic drainage of the oral tongue?"
+    expect_pages: {devita: [1026], gunderson: [871, 872]}
+  - q: "Which are the first echelon nodes for oral tongue cancer?"
+    expect_pages: {devita: [1026]}
+  - q: "What percentage of oral tongue lesions are squamous cell carcinomas?"
+    expect_pages: {devita: [1026], gunderson: [872]}
+  - q: "At what depth of invasion should neck dissection be considered in oral tongue cancer?"
+    expect_pages: {devita: [1026, 1027]}
+  - q: "How are early T1 and T2 oral tongue cancers treated?"
+    expect_pages: {devita: [1026], gunderson: [872, 873]}
+  - q: "What is a partial glossectomy used for?"
+    expect_pages: {devita: [1026]}
+  - q: "What proportion of oral tongue cancer patients have clinically positive nodes at diagnosis?"
+    expect_pages: {devita: [1026], gunderson: [872]}
+  - q: "Where do most oral tongue cancers begin?"
+    expect_pages: {devita: [1026], gunderson: [872]}
+  - q: "What are the symptoms of oral tongue carcinoma?"
+    expect_pages: {devita: [1026], gunderson: [872]}
+  - q: "How is base of tongue cancer treated with radiation?"
+    expect_pages: {devita: [1039]}
+  - q: "What is the surgical treatment for base of tongue carcinoma?"
+    expect_pages: {devita: [1039]}
+  - q: "What muscles make up the oral tongue?"
+    expect_pages: {gunderson: [871]}
+  - q: "Which nerve supplies motor function to the tongue?"
+    expect_pages: {gunderson: [871]}
+  - q: "What is the role of interstitial implant in oral tongue cancer?"
+    expect_pages: {devita: [1027], gunderson: [872]}
+  - q: "How is the N0 neck managed in head and neck squamous cell carcinoma?"
+    expect_pages: {devita: [1005, 1006]}
+  - q: "What is the differential diagnosis for an oral tongue lesion?"
+    expect_pages: {devita: [1026]}
+  - q: "How does oral tongue cancer in young patients differ?"
+    expect_pages: {devita: [986]}
+  - q: "What is the significance of HPV in oropharyngeal cancer?"
+    expect_pages: {devita: [986]}
+  - q: "What chemotherapy agents are used in recurrent or metastatic head and neck cancer?"
+    expect_pages: {devita: [1007, 1008]}
+  - q: "How is swallowing assessed after treatment for head and neck cancer?"
+    expect_pages: {devita: [1098]}
+  - q: "What are skip metastases in oral tongue cancer?"
+    expect_pages: {devita: [1026]}
+  - q: "How are moderately advanced T2 and T3 tongue cancers managed?"
+    expect_pages: {gunderson: [872]}
+  - q: "What is the prognosis for T4 tongue cancer?"
+    expect_pages: {gunderson: [872]}
+  - q: "What clinical target volume is recommended for oral cavity tumours in the neck?"
+    expect_pages: {gunderson: [1104]}
+  - q: "What is granular cell myoblastoma of the tongue?"
+    expect_pages: {devita: [1026]}
+
+# About tongue cancer, but outside what these two textbooks contain.
+# Correct behaviour is abstention, not a plausible-sounding answer.
+unanswerable:
+  - q: "What were the results of the 2024 KEYNOTE-689 trial in resectable tongue cancer?"
+  - q: "What is the NCCN 2025 recommended first-line immunotherapy for metastatic tongue cancer?"
+  - q: "How much does proton therapy for tongue cancer cost in India?"
+  - q: "Which hospital in Mumbai has the best outcomes for glossectomy?"
+  - q: "What is the five-year survival of tongue cancer in patients treated with CAR-T therapy?"
+  - q: "What did the 2023 Indian national tongue cancer registry report as incidence?"
+  - q: "Which gene therapy is approved for oral tongue squamous cell carcinoma?"
+  - q: "What is the recommended post-operative physiotherapy schedule in weeks after hemiglossectomy?"
+
+# Broad, plainly-phrased questions of the kind users actually type. These are
+# all answerable from the books, but they retrieve LOWER cross-encoder scores
+# than a precise question does, because no single passage restates them. They
+# exist to stop the grounding threshold being calibrated on a diet of narrow,
+# well-formed questions and then refusing ordinary ones.
+answerable_broad:
+  - q: "state major causes of skin cancer"
+  - q: "What causes skin cancer?"
+  - q: "What are the main risk factors for lung cancer?"
+  - q: "causes of oral cancer"
+  - q: "What causes breast cancer?"
+  - q: "major risk factors for colorectal cancer"
+  - q: "how is cervical cancer prevented"
+  - q: "what are the symptoms of pancreatic cancer"
+  - q: "overview of prostate cancer treatment"
+  - q: "what is brachytherapy"
+  - q: "explain radiation late effects"
+  - q: "what causes cancer of the oesophagus"
+
+# Covered by the books, but outside the tongue chapters. The topic gate must
+# let these through -- refusing them is the bug that full-book indexing was
+# meant to fix. Whether the answer is good is the grounding gate's problem;
+# this bucket only asserts "not refused as out of scope".
+in_scope_other:
+  - q: "How do I treat prostate cancer?"
+  - q: "What is the standard chemotherapy for metastatic breast cancer?"
+  - q: "What is the treatment for glioblastoma multiforme?"
+  - q: "Explain the staging of non-small cell lung cancer."
+  - q: "How is pancreatic cancer diagnosed?"
+  - q: "What is the linear quadratic model in radiobiology?"
+  - q: "What are the dose constraints for the spinal cord?"
+  - q: "How is cervical cancer treated with chemoradiation?"
+  - q: "What is the management of febrile neutropenia?"
+  - q: "How is early glottic laryngeal cancer treated?"
+  - q: "What is the role of proton therapy in paediatric tumours?"
+  - q: "How are Hodgkin lymphomas staged?"
+
+# Nothing to do with these textbooks. Must be refused before retrieval.
+off_topic:
+  - q: "Write me a poem about the sea."
+  - q: "What is the capital of France?"
+  - q: "How do I fix a Python ImportError?"
+  - q: "What is the best diet for weight loss?"
+  - q: "Tell me about the history of the Roman Empire."
+  - q: "Who won the football World Cup in 1998?"
+  - q: "How do I change a tyre on a car?"
+  - q: "What is the recipe for a chocolate cake?"
+  - q: "Explain how a transformer neural network works."
+  - q: "What is the weather forecast for tomorrow?"
