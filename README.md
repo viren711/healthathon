@@ -116,8 +116,11 @@ the first two never spend an LLM call. Layer 3 is what makes it independent of
 the model's goodwill: an uncited or unverifiable answer is replaced with the
 refusal, and the user never sees it.
 
-Full detail, including what changed when the corpus widened from tongue cancer
-to both whole books: **[docs/design.md](docs/design.md)**.
+The full technical picture — data, preprocessing, indexing, retrieval and the
+query path end to end — is in **[docs/architecture.md](docs/architecture.md)**.
+Why the guarantee is built this way, and what changed when the corpus widened
+from tongue cancer to both whole books, is in
+**[docs/design.md](docs/design.md)**.
 
 ---
 
@@ -178,6 +181,7 @@ start, stop   run and stop the platform
 
 | | |
 |---|---|
+| **[docs/architecture.md](docs/architecture.md)** | **start here** — data, preprocessing, indexing, retrieval, and the full query path |
 | **[docs/design.md](docs/design.md)** | the three refusal layers, scope decisions, streaming, answer length |
 | **[docs/pipeline.md](docs/pipeline.md)** | the six build stages, parallelism, corpus modes, organ-system tagging |
 | **[docs/measurements.md](docs/measurements.md)** | every measured number — including the optimisations that were tried and rejected |

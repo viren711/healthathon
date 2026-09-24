@@ -1,5 +1,9 @@
 # The build pipeline
 
+> For the system as a whole — runtime topology, data structures,
+> retrieval internals and the query path — see
+> [architecture.md](architecture.md).
+
 How the two PDFs become a searchable, citable index. Six stages, all
 CPU-only, all re-runnable. `scripts/run_all.sh` runs the lot.
 
