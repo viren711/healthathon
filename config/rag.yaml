@@ -194,7 +194,9 @@ messages:
 llm:
   # Overridden by LLM_BASE_URL / LLM_MODEL / LLM_API_KEY in .env.
   # Served by scripts/serve_llm.sh -- llama.cpp's OpenAI-compatible server,
-  # running a 4-bit Qwen2.5-3B on CPU. `model` must match the --alias there.
+  # running a 4-bit Qwen2.5-3B on CPU. The server is a router shared with the
+  # Content Studio, so `model` must match a section name in config/models.ini;
+  # the router loads that model on the first request that names it.
   # `./start --model 1.5b` switches to the smaller, ~2x faster model and sets
   # LLM_MODEL to match, so this line needs no edit.
   base_url: "http://localhost:8000/v1"

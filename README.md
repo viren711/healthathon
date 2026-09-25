@@ -1,4 +1,23 @@
-# Oncology Reference
+# Doctor Knowledge & Productivity Assistant
+
+A set of tools for physicians that runs entirely on one CPU-only machine —
+nothing typed into it leaves the computer. The portal opens on a home page
+that describes each tool and links to it:
+
+| tool | what it does |
+|---|---|
+| 🔬 **Knowledge Assistant** | cited answers from two oncology textbooks, with refusals when the books do not cover the question (the rest of this README) |
+| ✍️ **Content Studio** | drafts a blog post, patient handout or article from a short brief and a few questions — see **[docs/content-studio.md](docs/content-studio.md)** |
+| 🧪 **Research Platform** | placeholder, not yet built |
+
+The Knowledge Assistant and the Content Studio use different language models
+but share **one model server that holds one model at a time**, swapping on
+demand (~10 s into the writer, ~4 s back). Neither tool's model sits in memory
+while the other is in use.
+
+---
+
+## Knowledge Assistant
 
 A retrieval-augmented question-answering platform over two clinical oncology
 textbooks, built to run entirely on a CPU. Ask a question in plain English and
@@ -33,14 +52,17 @@ from your own PDFs.
 |---|---|
 | `data/*.pdf` (2 books, ~350 MB) | `corpus/` — cleaned, sectioned text |
 | | `artifacts/index/` — FAISS + BM25 + taxonomy |
-| | `models/` — llama.cpp binary + GGUF weights (downloaded) |
+| | `models/` — llama.cpp binary + GGUF weights (downloaded, ~7.7 GB) |
 
 ---
 
 ## Requirements
 
 - Linux x86-64, Python 3.12
-- ~8 GB RAM, ~7 GB free disk (2.8 GB models, 2 GB venv, ~0.9 GB corpus + index)
+- ~8 GB RAM, ~12 GB free disk (7.7 GB models, 2 GB venv, ~0.9 GB corpus + index).
+  Only the 3B reference model and one writer are required; the two optional
+  models (1.5B reference, Qwen3-4B writer) can be dropped from
+  `scripts/00_fetch_models.sh` to save ~3.3 GB.
 - **No GPU and no C toolchain required.** The generator is a prebuilt
   llama.cpp binary, because this machine has neither.
 
@@ -72,12 +94,16 @@ another. Budget about **90 minutes** end to end on a 6-core CPU, almost all of
 it embedding 15,844 chunks; everything else is minutes.
 
 ```bash
-./start                  # model server + portal
+./start                  # model server + portal (home page, all tools)
 ./start --model 1.5b     # smaller, ~2x faster generator (it transcribes; see docs)
 ./start --no-llm         # retrieval and topic lookup only, no model needed
 ./stop                   # stop everything from any terminal
 ./stop --status          # what is running, and which ports are held
 ```
+
+The portal opens on the home page; the Knowledge Assistant, Content Studio
+and Research Platform are in the left-hand navigation and linked from the
+home page.
 
 `./start` runs both services as children of that terminal — close it, or press
 Ctrl+C, and both stop. `./stop` is for when that did not happen: a run killed
@@ -155,10 +181,13 @@ could have answered, never the reverse.
 
 ```
 config/       books.yaml (page windows, lexicons), rag.yaml (models,
-              thresholds, messages), organ_systems.yaml (chapter -> pathology)
+              thresholds, messages), organ_systems.yaml (chapter -> pathology),
+              models.ini (model server presets), writer.yaml (Content Studio)
 rag/          the library: retriever, guard, generate, pipeline, locate,
               pdfview, llm, config
-app/          Streamlit portal (view layer only)
+writer/       Content Studio logic: brief, questions, prompt, tidy-up
+app/          Streamlit portal (view layer only): streamlit_app.py is the
+              entrypoint, one file per page in app/views/
 scripts/      00-06 pipeline stages, plus smoke_test / ui_test / ask_batch
 eval/         labelled question sets and generated reports
 docs/         design, pipeline, measurements, operating, cancer classes
@@ -174,6 +203,7 @@ start, stop   run and stop the platform
 | `rag/pipeline.py` | `answer_question()` — the only entry point the UI needs |
 | `rag/locate.py` | the topic locator (Find mode) |
 | `rag/pdfview.py` | renders source PDF pages for "Go to section" |
+| `writer/studio.py` | the Content Studio: follow-up questions, article prompt, streaming, tidy-up |
 
 ---
 
@@ -182,6 +212,7 @@ start, stop   run and stop the platform
 | | |
 |---|---|
 | **[docs/architecture.md](docs/architecture.md)** | **start here** — data, preprocessing, indexing, retrieval, and the full query path |
+| **[docs/content-studio.md](docs/content-studio.md)** | the article writer: flow, one-model-at-a-time memory design, writer model benchmarks |
 | **[docs/design.md](docs/design.md)** | the three refusal layers, scope decisions, streaming, answer length |
 | **[docs/pipeline.md](docs/pipeline.md)** | the six build stages, parallelism, corpus modes, organ-system tagging |
 | **[docs/measurements.md](docs/measurements.md)** | every measured number — including the optimisations that were tried and rejected |
@@ -194,7 +225,8 @@ start, stop   run and stop the platform
 
 ```bash
 python scripts/smoke_test.py        # 65 checks: guards, citations, scoping, PDF rendering
-python scripts/ui_test.py --no-llm  # 20 checks: clicks the real UI via Streamlit AppTest
+python scripts/ui_test.py --no-llm  # 33 checks: clicks the real UI via Streamlit AppTest
+python scripts/ui_test.py           # 46 checks: adds a real answer and a real draft (~2.5 min)
 python scripts/04_evaluate.py       # Recall@k, refusal accuracy, threshold calibration
 python scripts/06_eval_coverage.py  # retrieval coverage across all 14 organ systems
 python scripts/ask_batch.py --locate  # all 100 example queries, no model needed
@@ -204,9 +236,8 @@ python scripts/ask_batch.py --locate  # all 100 example queries, no model needed
 plumbing — including all three refusal layers — can be verified without a GPU
 or even a generator. `ui_test.py` exists because pipeline tests cannot catch
 interaction bugs: it was written after a "Go to section" button rendered its
-page correctly and then hid it inside a container that snapped shut.
-
----
+page correctly and then hid it inside a container that snapped shut. It
+covers the home page, both Knowledge Assistant modes and the Content Studio.
 
 ---
 

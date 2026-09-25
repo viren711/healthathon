@@ -31,6 +31,11 @@ class LLMClient:
     # "stop" (the model finished) or "length" (it hit max_tokens). Set by the
     # most recent chat/chat_stream call.
     last_finish_reason: str | None = None
+    # Extra request fields merged into every payload. Model-specific switches
+    # live here -- e.g. Qwen3.5 thinks silently by default and must be sent
+    # {"chat_template_kwargs": {"enable_thinking": False}} on each request,
+    # or it spends the whole token budget reasoning before writing a word.
+    extra_body: dict | None = None
 
     @classmethod
     def from_config(cls) -> "LLMClient":
@@ -53,6 +58,7 @@ class LLMClient:
             ],
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
+            **(self.extra_body or {}),
         }
         req = urllib.request.Request(
             f"{self.base_url}/chat/completions",
@@ -108,6 +114,7 @@ class LLMClient:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "stream": True,
+            **(self.extra_body or {}),
         }
         self.last_finish_reason = None
         req = urllib.request.Request(
@@ -160,3 +167,27 @@ class LLMClient:
             return True, f"reachable; models: {', '.join(n for n in names if n) or 'unknown'}"
         except Exception as exc:  # noqa: BLE001 - any failure is "not reachable"
             return False, str(exc)
+
+    def resident_models(self) -> tuple[bool, list[str]]:
+        """Which models the router currently holds in memory.
+
+        In router mode /v1/models lists every declared model with a status of
+        "loaded", "loading" or "unloaded". Returns (reachable, loaded_ids).
+        A plain single-model server reports no status; treat everything it
+        lists as loaded, since that is literally true of it.
+        """
+        try:
+            req = urllib.request.Request(
+                f"{self.base_url}/models",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception:  # noqa: BLE001 - any failure is "not reachable"
+            return False, []
+        loaded = []
+        for m in data.get("data", []):
+            status = (m.get("status") or {}).get("value")
+            if status in (None, "loaded", "loading"):
+                loaded.append(m.get("id"))
+        return True, [n for n in loaded if n]

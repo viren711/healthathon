@@ -138,8 +138,8 @@ the smaller model writes a correct, grounded answer and omits the citation
 markers, so layer 3 discards it. "what is brachytherapy" is the clean example:
 retrieval scores 8.3 either way, and only the 3B gets it past layer 3.
 
-Switching is one flag, no config edit — both are served under an alias that
-`LLM_MODEL` is set to match:
+Switching is one flag, no config edit — both are presets in
+`config/models.ini`, and `LLM_MODEL` is set to name the one to load:
 
 ```bash
 ./start --model 1.5b     # smaller and ~2x faster, but it transcribes

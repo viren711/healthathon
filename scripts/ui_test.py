@@ -12,8 +12,8 @@ script, and the expander was rebuilt with a hard-coded `expanded=False`. The
 page was there in the element tree the whole time, inside a container that had
 snapped shut. To the user it looked like a dead button.
 
-    python scripts/ui_test.py            # both modes (Ask needs the LLM)
-    python scripts/ui_test.py --no-llm   # Find mode only, no model required
+    python scripts/ui_test.py            # everything (Ask and drafting need the LLM)
+    python scripts/ui_test.py --no-llm   # no model required
 """
 
 from __future__ import annotations
@@ -25,7 +25,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-APP = str(ROOT / "app" / "streamlit_app.py")
+# The entrypoint is now the home page; each tool is its own view, driven
+# directly so the tests do not depend on navigating through the home page.
+ENTRY = str(ROOT / "app" / "streamlit_app.py")
+APP = str(ROOT / "app" / "views" / "oncology_reference.py")
+STUDIO = str(ROOT / "app" / "views" / "content_studio.py")
 
 failures: list[str] = []
 
@@ -171,6 +175,81 @@ def test_ask_mode(AppTest) -> None:
     check("no exception after opening the page", not at.exception)
 
 
+def test_home(AppTest) -> None:
+    print("\n== Home ==")
+    at = AppTest.from_file(ENTRY, default_timeout=300)
+    at.run()
+    check("home renders without an exception", not at.exception,
+          str([e.value for e in at.exception][:1]))
+    check("home carries the platform title",
+          any("Doctor Knowledge" in t.value for t in at.title),
+          str([t.value for t in at.title]))
+    headings = " ".join(m.value for m in at.markdown)
+    for name in ("Knowledge Assistant", "Content Studio", "Research Platform"):
+        check(f"home describes the {name}", name in headings)
+    links = at.get("page_link")
+    check("home links to all three tools", len(links) == 3, f"{len(links)} links")
+    check("the research platform is marked as coming soon",
+          any("Coming soon" in i.value for i in at.info))
+
+
+def test_studio_brief(AppTest) -> None:
+    print("\n== Content Studio (no model needed) ==")
+    at = AppTest.from_file(STUDIO, default_timeout=300)
+    at.run()
+    check("studio renders without an exception", not at.exception,
+          str([e.value for e in at.exception][:1]))
+    check("studio asks for a topic and a description",
+          [t.label for t in at.text_input] == ["Topic"]
+          and [t.label for t in at.text_area] == ["Describe the piece"])
+    check("studio asks what kind of piece",
+          any(sb.label == "Kind of piece" for sb in at.selectbox))
+    check("a writer model is offered in the sidebar",
+          len(at.sidebar.radio) == 1 and len(at.sidebar.radio[0].options) >= 1,
+          str([r.options for r in at.sidebar.radio]))
+
+    # An empty brief must be stopped before any model call is made.
+    [b for b in at.button if "Next" in b.label][0].click().run()
+    warnings = [w.value for w in at.warning]
+    check("an empty brief is refused with a reason",
+          any("topic" in w.lower() for w in warnings), str(warnings))
+    check("an empty brief stays on step 1",
+          any(t.label == "Topic" for t in at.text_input))
+
+
+def test_studio_draft(AppTest) -> None:
+    print("\n== Content Studio (real draft, a few minutes) ==")
+    at = AppTest.from_file(STUDIO, default_timeout=900)
+    at.run()
+    at.text_input[0].set_value("Early warning signs of oral cancer")
+    at.text_area[0].set_value(
+        "A friendly blog post for my clinic website encouraging adults over 40, "
+        "especially smokers, to get their mouth checked.")
+    [b for b in at.button if "Next" in b.label][0].click().run()
+    check("step 2 is reached without an exception", not at.exception,
+          str([e.value for e in at.exception][:1]))
+    check("topic-specific questions are asked", len(at.text_input) >= 1,
+          f"{len(at.text_input)} questions")
+
+    short = [r for r in at.radio if any(o.startswith("Short") for o in r.options)]
+    if short:
+        short[0].set_value([o for o in short[0].options if o.startswith("Short")][0])
+    [b for b in at.button if "Write the article" in b.label][0].click().run()
+    check("a draft is produced without an exception", not at.exception,
+          str([e.value for e in at.exception][:1]))
+    article = [m.value for m in at.markdown if m.value.startswith("# ")]
+    check("the draft opens with a single H1 title", len(article) == 1)
+    check("the draft is marked for physician review",
+          any("Draft for your review" in w.value for w in at.warning))
+    check("the draft can be downloaded", len(at.get("download_button")) == 1)
+    if article:
+        # A draft that stops mid-sentence is the specific failure the tidy-up
+        # step exists to prevent.
+        body = article[0].split("\n---\n")[0].rstrip()
+        check("the draft ends on a complete sentence",
+              body[-1:] in ".!?)*", repr(body[-40:]))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--no-llm", action="store_true",
@@ -183,19 +262,22 @@ def main() -> int:
         print("streamlit.testing is unavailable -- upgrade streamlit", file=sys.stderr)
         return 1
 
+    test_home(AppTest)
     test_find_mode(AppTest)
     test_scope_selector(AppTest)
+    test_studio_brief(AppTest)
 
     if args.no_llm:
-        print("\n(skipping Ask mode: --no-llm)")
+        print("\n(skipping Ask mode and drafting: --no-llm)")
     else:
         from rag.llm import LLMClient
 
         ok, detail = LLMClient.from_config().health()
         if ok:
             test_ask_mode(AppTest)
+            test_studio_draft(AppTest)
         else:
-            print(f"\n(skipping Ask mode: model server unreachable -- {detail})")
+            print(f"\n(skipping Ask mode and drafting: model server unreachable -- {detail})")
 
     print()
     if failures:

@@ -52,15 +52,12 @@ done
 PYTHON=python3
 [[ -x .venv/bin/python ]] && PYTHON=.venv/bin/python
 
-# Both models are served under the SAME alias, and LLM_MODEL is exported to
-# match, so config/rag.yaml needs no edit to switch between them.
+# The model server runs in router mode with every model declared in
+# config/models.ini, so choosing the reference model is just asking for a
+# different preset by name. LLM_MODEL is exported for the portal to pick up.
 if [[ "$MODEL_CHOICE" == "3b" ]]; then
-    export GGUF_FILE="Qwen2.5-3B-Instruct-Q4_K_M.gguf"
-    export ALIAS="qwen2.5-3b-instruct"
     export LLM_MODEL="qwen2.5-3b-instruct"
 elif [[ "$MODEL_CHOICE" == "1.5b" ]]; then
-    export GGUF_FILE="Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"
-    export ALIAS="qwen2.5-1.5b-instruct"
     export LLM_MODEL="qwen2.5-1.5b-instruct"
 fi
 
@@ -80,14 +77,18 @@ print(path_of("index_dir"))
 PY
 )
 if [[ -z "${INDEX_DIR:-}" || ! -f "$INDEX_DIR/index_meta.json" ]]; then
-    fail "No index found${INDEX_DIR:+ at $INDEX_DIR}."
-    fail "Build it first:  bash scripts/run_all.sh"
-    exit 1
+    # Only the Knowledge Assistant needs the index; the home page and the
+    # Content Studio work without it, so this is a warning, not a stop.
+    warn "No reference index found${INDEX_DIR:+ at $INDEX_DIR} -- the Knowledge Assistant will be unavailable."
+    warn "Build it with:  bash scripts/run_all.sh"
 fi
 
-GGUF_DEFAULT="models/gguf/Qwen2.5-3B-Instruct-Q4_K_M.gguf"
-if (( WITH_LLM )) && [[ ! -f "${GGUF_FILE:-$GGUF_DEFAULT}" && ! -f "models/gguf/${GGUF_FILE:-}" ]]; then
-    warn "Generator weights not found -- starting without it."
+if (( WITH_LLM )) && [[ ! -f config/models.ini ]]; then
+    warn "config/models.ini is missing -- starting without a model server."
+    WITH_LLM=0
+fi
+if (( WITH_LLM )) && ! ls models/gguf/*.gguf > /dev/null 2>&1; then
+    warn "No model weights in models/gguf -- starting without a model server."
     warn "Fetch them with:  bash scripts/00_fetch_models.sh"
     WITH_LLM=0
 fi
@@ -166,9 +167,12 @@ import json, sys, urllib.request
 sys.path.insert(0, ".")
 try:
     from rag.config import load_config
-    from rag.generate import SYSTEM_PROMPT
+    from rag.generate import build_prompt
     cfg = load_config()
-    system = SYSTEM_PROMPT.format(sentinel=cfg["guard"]["citation"]["sentinel"])
+    # Built by the pipeline's own function, so this primes the byte-identical
+    # prefix real questions will send. (Formatting SYSTEM_PROMPT by hand broke
+    # silently when the prompt gained new placeholders.)
+    system, _ = build_prompt("warm-up", [])
     body = {"model": cfg["llm"]["model"],
             "messages": [{"role": "system", "content": system},
                          {"role": "user", "content": "ready?"}],

@@ -16,8 +16,15 @@ PYTHON=python
 
 MODELS_DIR="${MODELS_DIR:-models}"
 LLAMA_BUILD="${LLAMA_BUILD:-b10964}"
-GGUF_REPO="${GGUF_REPO:-bartowski/Qwen2.5-3B-Instruct-GGUF}"
-GGUF_FILE="${GGUF_FILE:-Qwen2.5-3B-Instruct-Q4_K_M.gguf}"
+# Every GGUF the router serves (config/models.ini), as "repo filename" pairs.
+# The reference model and the Content Studio's default writer are required;
+# the others are optional alternatives and can be dropped to save ~4 GB.
+GGUF_MODELS=(
+    "bartowski/Qwen2.5-3B-Instruct-GGUF Qwen2.5-3B-Instruct-Q4_K_M.gguf"     # Knowledge Assistant
+    "unsloth/Qwen3.5-4B-GGUF Qwen3.5-4B-Q4_K_M.gguf"                         # Content Studio (default)
+    "unsloth/Qwen3-4B-Instruct-2507-GGUF Qwen3-4B-Instruct-2507-Q4_K_M.gguf" # Content Studio (faster)
+    "bartowski/Qwen2.5-1.5B-Instruct-GGUF Qwen2.5-1.5B-Instruct-Q4_K_M.gguf" # ./start --model 1.5b
+)
 EMBED_MODEL="${EMBED_MODEL:-BAAI/bge-base-en-v1.5}"
 RERANKERS="${RERANKERS:-cross-encoder/ms-marco-MiniLM-L-6-v2 BAAI/bge-reranker-base}"
 
@@ -47,13 +54,17 @@ fetch_llama() {
 }
 
 # --- 2. GGUF weights --------------------------------------------------------
+# Sequential within this lane: the downloads share one network link, so
+# running them in parallel would not finish any sooner.
 fetch_gguf() {
-    if [[ -f "$MODELS_DIR/gguf/$GGUF_FILE" ]]; then
-        echo "[gguf] already present, skipping"
-        return
-    fi
-    echo "[gguf] downloading $GGUF_REPO/$GGUF_FILE"
-    "$PYTHON" - "$GGUF_REPO" "$GGUF_FILE" "$MODELS_DIR/gguf" <<'PY'
+    for spec in "${GGUF_MODELS[@]}"; do
+        local repo="${spec%% *}" file="${spec##* }"
+        if [[ -f "$MODELS_DIR/gguf/$file" ]]; then
+            echo "[gguf] $file already present, skipping"
+            continue
+        fi
+        echo "[gguf] downloading $repo/$file"
+        "$PYTHON" - "$repo" "$file" "$MODELS_DIR/gguf" <<'PY'
 import shutil, sys
 from pathlib import Path
 from huggingface_hub import hf_hub_download
@@ -65,6 +76,7 @@ dest.mkdir(parents=True, exist_ok=True)
 shutil.copyfile(src, dest / filename)
 print("saved", dest / filename)
 PY
+    done
     echo "[gguf] done"
 }
 
