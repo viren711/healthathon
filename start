@@ -50,7 +50,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 PYTHON=python3
-[[ -x .venv/bin/python ]] && PYTHON=.venv/bin/python
+if [[ -x .healthathon/bin/python ]]; then
+    PYTHON=.healthathon/bin/python
+elif [[ -x .venv/bin/python ]]; then
+    PYTHON=.venv/bin/python
+fi
 
 # The model server runs in router mode with every model declared in
 # config/models.ini, so choosing the reference model is just asking for a

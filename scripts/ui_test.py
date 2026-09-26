@@ -48,11 +48,72 @@ def goto_buttons(at):
     return [i for i, b in enumerate(at.button) if "Go to section" in b.label]
 
 
+def goto_page(at, page_name: str) -> bool:
+    page_hash = next(
+        (
+            page_hash
+            for page_hash, info in at._registered_pages.items()
+            if info.get("page_name") == page_name
+        ),
+        None,
+    )
+    if page_hash is None:
+        return False
+    at._page_hash = page_hash
+    at.run()
+    return True
+
+
+def check_landing_and_pages(AppTest) -> None:
+    print("\n== Landing and assistant pages ==")
+    at = AppTest.from_file(APP, default_timeout=300)
+    at.run()
+    # Default page is now Oncology Reference
+    check("app opens to Oncology Reference", [title.value for title in at.title] == ["Oncology Reference"],
+          str([title.value for title in at.title]))
+
+    # Navigate to Scite AI page
+    at.switch_page("pages/scite_ai.py").run()
+    check("Scite page opens", [title.value for title in at.title] == ["Scite AI"],
+          str([title.value for title in at.title]))
+    check("Scite page has a question editor", len(at.text_area) == 1,
+          f"{len(at.text_area)} editor(s)")
+    check("Scite page has assistant settings", len(at.sidebar.selectbox) == 2,
+          f"{len(at.sidebar.selectbox)} setting(s)")
+    at.text_area[0].set_value("What is Scite?").run()
+    at.button(key="send_scite").click().run()
+    check("Scite page returns an assistant response", len(at.chat_message) >= 2,
+          f"{len(at.chat_message)} message(s)")
+    check("Scite question field clears after summarizing", at.text_area[0].value == "",
+          repr(at.text_area[0].value))
+    check(
+        "Scite page handles the response without an exception",
+        not at.exception,
+        f"{len(at.expander)} source card(s)",
+    )
+    check("Scite page has no exception", not at.exception)
+
+    # Navigate back to Oncology Reference using its page hash
+    onco_hash = next(
+        h for h, info in at._registered_pages.items()
+        if info.get("page_name") == "Oncology Reference"
+    )
+    at._page_hash = onco_hash
+    at.run()
+    check("Oncology Reference page reopens", [title.value for title in at.title] == ["Oncology Reference"],
+          str([title.value for title in at.title]))
+    check("Oncology Reference has no exception", not at.exception)
+
+
 def test_find_mode(AppTest) -> None:
     print("\n== Find mode ==")
     at = AppTest.from_file(APP, default_timeout=300)
     at.run()
     check("app starts without an exception", not at.exception)
+    check("oncology reference page opens", goto_page(at, "Oncology Reference"),
+          str(list(at._registered_pages.values())))
+    if [title.value for title in at.title] != ["Oncology Reference"]:
+        return
 
     at.radio[0].set_value("Find a topic").run()
     at.text_input[0].set_value("brachytherapy").run()
@@ -72,6 +133,10 @@ def test_find_mode(AppTest) -> None:
     # A nonsense topic must find nothing rather than the nearest five passages.
     at2 = AppTest.from_file(APP, default_timeout=300)
     at2.run()
+    check("second app instance opens oncology reference", goto_page(at2, "Oncology Reference"),
+          str(list(at2._registered_pages.values())))
+    if [title.value for title in at2.title] != ["Oncology Reference"]:
+        return
     at2.radio[0].set_value("Find a topic").run()
     at2.text_input[0].set_value("What is the capital of France?").run()
     check("an out-of-corpus topic returns no places", len(goto_buttons(at2)) == 0,
@@ -82,6 +147,10 @@ def test_scope_selector(AppTest) -> None:
     print("\n== Section selector ==")
     at = AppTest.from_file(APP, default_timeout=300)
     at.run()
+    check("oncology reference page opens", goto_page(at, "Oncology Reference"),
+          str(list(at._registered_pages.values())))
+    if [title.value for title in at.title] != ["Oncology Reference"]:
+        return
     labels = [sb.label for sb in at.selectbox]
     check("an organ-system selector exists", "Organ system" in labels, str(labels))
     if "Organ system" not in labels:
@@ -156,6 +225,10 @@ def test_ask_mode(AppTest) -> None:
     print("\n== Ask mode (one real LLM call) ==")
     at = AppTest.from_file(APP, default_timeout=900)
     at.run()
+    check("oncology reference page opens", goto_page(at, "Oncology Reference"),
+          str(list(at._registered_pages.values())))
+    if [title.value for title in at.title] != ["Oncology Reference"]:
+        return
     at.chat_input[0].set_value("What is the lymphatic drainage of the oral tongue?").run()
     check("question answered without an exception", not at.exception)
     check("the answer carries a source card", len(at.expander) > 0,
@@ -262,7 +335,8 @@ def main() -> int:
         print("streamlit.testing is unavailable -- upgrade streamlit", file=sys.stderr)
         return 1
 
-    test_home(AppTest)
+    check_landing_and_pages(AppTest)
+
     test_find_mode(AppTest)
     test_scope_selector(AppTest)
     test_studio_brief(AppTest)
