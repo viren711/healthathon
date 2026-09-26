@@ -184,10 +184,9 @@ config/       books.yaml (page windows, lexicons), rag.yaml (models,
               thresholds, messages), organ_systems.yaml (chapter -> pathology),
               models.ini (model server presets), writer.yaml (Content Studio)
 rag/          the library: retriever, guard, generate, pipeline, locate,
-              pdfview, llm, config
-writer/       Content Studio logic: brief, questions, prompt, tidy-up
-app/          Streamlit portal (view layer only): streamlit_app.py is the
-              entrypoint, one file per page in app/views/
+              pdfview, llm, config, scite (Scite Assistant API client)
+app/          Streamlit portal (view layer only)
+  pages/      Scite AI chat page (app/pages/scite_ai.py)
 scripts/      00-06 pipeline stages, plus smoke_test / ui_test / ask_batch
 eval/         labelled question sets and generated reports
 docs/         design, pipeline, measurements, operating, cancer classes
@@ -218,6 +217,64 @@ start, stop   run and stop the platform
 | **[docs/measurements.md](docs/measurements.md)** | every measured number — including the optimisations that were tried and rejected |
 | **[docs/operating.md](docs/operating.md)** | testing without a GPU, tuning notes |
 | **[docs/cancer-classes.md](docs/cancer-classes.md)** | every malignancy the books cover, by tissue of origin and by organ system |
+
+---
+
+## Scite AI Assistant
+
+The Streamlit app includes a **Scite AI** page (`app/pages/scite_ai.py`) that connects to the Scite Assistant API for literature-grounded answers with cited sources.
+
+### Setup
+
+1. Get an API key from [Scite API Console](https://scite.ai/users/me/api) (requires `assistant` scope)
+2. Add to `.env`:
+   ```bash
+   SCITE_API_KEY=your_key_here
+   # Optional:
+   SCITE_API_BASE_URL=https://api.scite.ai
+   SCITE_TIMEOUT_SECONDS=120
+   SCITE_POLL_INTERVAL_SECONDS=2
+   ```
+
+### Features
+
+- **Multi-turn conversations** — full chat history sent with each request
+- **Cited sources** — each answer displays expandable source cards with title, authors, journal, year, DOI, and Scite link
+- **Assistant settings** (sidebar):
+  - Answer length: short / medium / long
+  - Citation style: APA, IEEE, MLA, AMA, Chicago, Harvard, Vancouver
+  - Toggle scholarly references on/off
+- **Async polling** — submits query, polls with backoff, shows progress while waiting
+
+### Architecture
+
+- `rag/scite.py` — `SciteClient` class handling the async poll-based API:
+  - `POST /api_partner/assistant/poll` → returns `task_id`
+  - `GET /api_partner/assistant/tasks/{task_id}` → polls until `SUCCESS`
+  - Parses responses into `SciteReference`, `SciteTurn`, `SciteResponse` dataclasses
+- `app/pages/scite_ai.py` — Streamlit page with chat UI, history, sidebar settings
+- Demo mode when `SCITE_API_KEY` not set
+
+### API Flow
+
+```
+User question
+      |
+      v
+  POST /assistant/poll  (turns[], userInput, answerLength, citationStyle, alwaysUseReferences)
+      |
+      v
+  { "id": "task_abc123" }
+      |
+      v
+  Poll GET /assistant/tasks/task_abc123  (every 2s, up to 120s)
+      |
+      v
+  { "status": "STARTED", "info": { "step": "GENERATING_RESPONSE", ... } }
+      |
+      v
+  { "status": "SUCCESS", "result": { "turns": [{ "role": "assistant", "content": "...", "references": [...] }] } }
+```
 
 ---
 
