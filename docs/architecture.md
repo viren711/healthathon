@@ -4,12 +4,6 @@ How the system is put together: the data it starts from, how that data is
 turned into a searchable index, and what happens to a query from keystroke to
 cited answer.
 
-This document covers the **Knowledge Assistant** — the textbook-grounded part
-of the platform. The portal also hosts the **Content Studio** (article
-drafting, [content-studio.md](content-studio.md)) and a placeholder
-**Research Platform**; they share the process layout and the model server
-described in §1.
-
 Everything here runs on one machine with no GPU. That constraint shaped most
 of the design decisions, and where it did, the reasoning is stated.
 
@@ -28,28 +22,19 @@ Three processes, started and torn down together by `./start`:
         ▼                                             ▼
  ┌──────────────────────────┐              ┌─────────────────────────────┐
  │ llama-server   :8000     │              │ streamlit      :8501        │
- │ router, --models-max 1   │◀── HTTP ─────│ app/streamlit_app.py        │
- │ presets config/models.ini│  /v1/chat/   │  home · Knowledge Assistant │
- │ 6 gen threads, 12 prefill│  completions │  Content Studio · Research  │
- └──────────┬───────────────┘              │  imports rag/, writer/      │
-            │ loads on demand,             └─────────────────────────────┘
-            │ one at a time                             │
-            ▼                               loads once, cached in RAM
- ┌──────────────────────────┐                           ▼
- │ model child process      │              ┌─────────────────────────────┐
- │ Qwen2.5-3B  (Ask mode)   │              │ artifacts/index/            │
- │   — or —                 │              │  FAISS · BM25 · embeddings  │
- │ Qwen3.5-4B  (Studio)     │              │  chunks · centroids · tax.  │
+ │ llama.cpp, prebuilt      │◀── HTTP ─────│ app/streamlit_app.py        │
+ │ Qwen2.5-3B-Instruct Q4_K_M│  /v1/chat/  │   imports rag/ in-process   │
+ │ 6 gen threads, 12 prefill│  completions │                             │
  └──────────────────────────┘              └─────────────────────────────┘
+                                                        │
+                                            loads once, cached in RAM
+                                                        ▼
+                                            ┌─────────────────────────────┐
+                                            │ artifacts/index/            │
+                                            │  FAISS · BM25 · embeddings  │
+                                            │  chunks · centroids · tax.  │
+                                            └─────────────────────────────┘
 ```
-
-The model server runs in llama.cpp's **router mode**: every request names a
-model, and the router starts that model in a child process, stopping the
-previous one first because at most one may be resident. Asking a question
-loads the 3B reference model; drafting an article swaps in the 4B writer.
-Swaps cost ~10 s into the writer and ~4 s back, and nothing else needs to
-coordinate them. The memory reasoning is in
-[content-studio.md](content-studio.md#one-model-in-memory-at-a-time).
 
 The retrieval stack is a **library, not a service**. `rag/` is imported
 directly by the Streamlit process; there is no HTTP hop between the UI and
@@ -73,9 +58,7 @@ putting an HTTP API in front later is a wrapper, not a refactor.
 | `rag/pipeline.py` | orchestrates gate → retrieve → gate → generate → verify | all of the above |
 | `rag/locate.py` | topic locator (Find mode) | retriever |
 | `rag/pdfview.py` | renders source PDF pages | PyMuPDF |
-| `writer/studio.py` | Content Studio: questions, article prompt, tidy-up | `rag/llm.py` |
-| `app/streamlit_app.py` | entrypoint: page navigation only | — |
-| `app/views/*.py` | one file per page, view layer only — no retrieval or prompt logic | `rag/`, `writer/` |
+| `app/streamlit_app.py` | view layer only — no retrieval or prompt logic | `rag/` |
 
 `rag/llm.py` has **no third-party dependencies**: it speaks
 `/v1/chat/completions` over `urllib`. That is what lets the backend be swapped
@@ -490,7 +473,7 @@ layer 3 is the guarantee.
 | suite | checks | needs a model? |
 |---|---|---|
 | `scripts/smoke_test.py` | 65 — guards, citations, scoping, length fitting, PDF rendering, stale-index detection | no (stubbed) |
-| `scripts/ui_test.py` | 33, or 46 with a model — home page, Find, Ask, section filter, Content Studio, via Streamlit `AppTest` | Ask mode and drafting only |
+| `scripts/ui_test.py` | 20 — clicks the real UI via Streamlit `AppTest` | Ask mode only |
 | `scripts/04_evaluate.py` | Recall@k, MRR, refusal accuracy, calibration | `--with-llm` only |
 | `scripts/06_eval_coverage.py` | organ-system coverage, 38 questions | no |
 
@@ -518,9 +501,7 @@ inside a container that had snapped shut.
   entailment model is the right tool and is not in this stack. What carries the
   weight instead is layer 2 plus one-click page verification.
 - **Single-process, single-user.** No request queue, no concurrency control.
-  The model server has one slot and one resident model: two people using the
-  Knowledge Assistant and the Content Studio at once would force a model swap
-  on every request.
+  llama.cpp has 4 slots but nothing coordinates them.
 - **The index is immutable at runtime.** Adding a book is a full rebuild; there
   is no incremental path.
 - **Recall is measured precisely only on tongue cancer** (page-level ground
