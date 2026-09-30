@@ -434,9 +434,9 @@ def find_mode(scope=None, scope_label="All sections") -> None:
 
 
 def main() -> None:
-    st.title("Oncology Reference")
+    st.title(":material/menu_book: Knowledge Assistant")
     st.caption(
-        "Two indexed textbooks. **Ask** a question and every fact comes back cited, "
+        "Oncology reference from two indexed textbooks. **Ask** a question and every fact comes back cited, "
         "or say so if the books do not cover it. **Find** a topic and jump straight "
         "to the page it is on."
     )

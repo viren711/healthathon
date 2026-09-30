@@ -1,14 +1,29 @@
 # Doctor Knowledge & Productivity Assistant
 
-A set of tools for physicians that runs entirely on one CPU-only machine —
-nothing typed into it leaves the computer. The portal opens on a home page
-that describes each tool and links to it:
+A set of tools for physicians that runs on one CPU-only machine. The
+Knowledge Assistant and Content Studio never send anything off the computer;
+the Research Platform sends its questions to scite.ai.
+
+The portal opens on a **home page** with a navigation bar across the top
+(Home · Knowledge Assistant · Content Studio · Research Platform) that stays
+on every page. The home page has:
+
+- a **launcher** — pick *Ask the textbooks*, *Draft an article* or *Search the
+  literature*, type (or pick an example), and you land in that tool mid-task:
+  the question already asked, the article topic already filled in, or the
+  literature search already sent;
+- a **card per tool** saying what it does and whether it runs on this computer
+  or online, each with a button into it;
+- **live status** — whether the model server is up, which model is in memory,
+  the size of the textbook index, and whether Scite is configured.
+
+| tool | what it does |
 
 | tool | what it does |
 |---|---|
 | 🔬 **Knowledge Assistant** | cited answers from two oncology textbooks, with refusals when the books do not cover the question (the rest of this README) |
 | ✍️ **Content Studio** | drafts a blog post, patient handout or article from a short brief and a few questions — see **[docs/content-studio.md](docs/content-studio.md)** |
-| 🧪 **Research Platform** | placeholder, not yet built |
+| 🧪 **Research Platform** | literature-grounded answers from published papers via [Scite](https://scite.ai), summarised locally — see [below](#research-platform-scite) |
 
 The Knowledge Assistant and the Content Studio use different language models
 but share **one model server that holds one model at a time**, swapping on
@@ -101,9 +116,9 @@ it embedding 15,844 chunks; everything else is minutes.
 ./stop --status          # what is running, and which ports are held
 ```
 
-The portal opens on the home page; the Knowledge Assistant, Content Studio
-and Research Platform are in the left-hand navigation and linked from the
-home page.
+The portal opens on the home page; every tool is one click away in the
+navigation bar at the top (`/knowledge`, `/studio`, `/research`). Each tool
+keeps the left sidebar for its own settings.
 
 `./start` runs both services as children of that terminal — close it, or press
 Ctrl+C, and both stop. `./stop` is for when that did not happen: a run killed
@@ -175,20 +190,49 @@ End to end with all three refusal layers live, over 67 labelled questions:
 Every shortfall is a *safe* failure: the platform said "not available" where it
 could have answered, never the reverse.
 
+### Clinical question set
+
+77 open-ended, multi-part clinical questions (`test/Questions .docx`) —
+head & neck, lung, breast, CNS, GI, GU, gynaecological, sarcoma, lymphoma,
+paediatric, palliative, radiobiology and evidence interpretation — run through
+the full pipeline with Qwen3.5-4B as the generator:
+
+| result | count |
+|---|---|
+| answered from the books, with references | **65** |
+| "Not in book" — refused before generation (grounding gate) | 8 |
+| "Not in book" — answer failed the citation check | 4 |
+
+About 97 minutes for all 77 on this CPU (60–130 s per answered question). The
+per-question sheet — question, response, in book or not, references — is
+`test/questions_results.xlsx`. Several of the 8 early refusals are questions the
+books do cover, phrased as long case vignettes; the reranker and its threshold
+were calibrated on short questions, so this is the platform's main known
+weakness on this style of question.
+
+```bash
+python scripts/eval_questions.py               # resumable; checkpoints each answer
+python scripts/eval_questions.py --build-only  # rebuild the sheet, no model calls
+```
+
 ---
 
 ## Repository layout
 
 ```
+.streamlit/   config.toml -- the portal's theme (light and dark)
 config/       books.yaml (page windows, lexicons), rag.yaml (models,
               thresholds, messages), organ_systems.yaml (chapter -> pathology),
               models.ini (model server presets), writer.yaml (Content Studio)
 rag/          the library: retriever, guard, generate, pipeline, locate,
-              pdfview, llm, config, scite (Scite Assistant API client)
-app/          Streamlit portal (view layer only)
-  pages/      Scite AI chat page (app/pages/scite_ai.py)
-scripts/      00-06 pipeline stages, plus smoke_test / ui_test / ask_batch
+              pdfview, llm, config, scite (Scite API clients)
+writer/       Content Studio logic: brief, questions, prompt, tidy-up
+app/          Streamlit portal (view layer only): streamlit_app.py is the
+              entrypoint and top navigation, one file per page in app/views/
+scripts/      00-06 pipeline stages, plus smoke_test / ui_test / ask_batch /
+              eval_questions
 eval/         labelled question sets and generated reports
+test/         clinical question set (.docx) and its results sheet (.xlsx)
 docs/         design, pipeline, measurements, operating, cancer classes
 queries.txt   100 example queries, grouped by organ system
 start, stop   run and stop the platform
@@ -220,61 +264,42 @@ start, stop   run and stop the platform
 
 ---
 
-## Scite AI Assistant
+## Research Platform (Scite)
 
-The Streamlit app includes a **Scite AI** page (`app/pages/scite_ai.py`) that connects to the Scite Assistant API for literature-grounded answers with cited sources.
+The Research Platform page (`app/views/research_platform.py`) answers research
+questions from the published literature through [Scite](https://scite.ai).
 
-### Setup
+1. The question — with the conversation so far — goes to the **Scite
+   Assistant API** (`SCITE_API_KEY`): `POST /api_partner/assistant/poll`
+   returns a task id, polled at `GET /api_partner/assistant/tasks/{id}` until
+   it succeeds or `SCITE_TIMEOUT_SECONDS` passes.
+2. If that fails — no key, or the plan's monthly limit is used up (HTTP 429) —
+   it falls back to Scite's **MCP literature search** (`SCITE_MCP_API_KEY`,
+   `search_literature` over JSON-RPC at `/mcp`), which returns papers but no
+   written answer.
+3. The abstracts and evidence excerpts of the returned papers are summarised
+   by the **local reference model** (map-reduce over ~12k-character batches),
+   citing each paper as `[n]`. If the model server is down, Scite's own output
+   is shown instead. The evidence sent to the model is logged to
+   `logs/scite/evidence-*.jsonl`.
 
-1. Get an API key from [Scite API Console](https://scite.ai/users/me/api) (requires `assistant` scope)
-2. Add to `.env`:
-   ```bash
-   SCITE_API_KEY=your_key_here
-   # Optional:
-   SCITE_API_BASE_URL=https://api.scite.ai
-   SCITE_TIMEOUT_SECONDS=120
-   SCITE_POLL_INTERVAL_SECONDS=2
-   ```
+Each source card shows authors, journal, year, a DOI link, the abstract and
+the excerpts. The sidebar sets answer length, citation style, and whether to
+use references.
 
-### Features
+**Setup** — put the keys in `.env` (gitignored; see `.env.example`):
 
-- **Multi-turn conversations** — full chat history sent with each request
-- **Cited sources** — each answer displays expandable source cards with title, authors, journal, year, DOI, and Scite link
-- **Assistant settings** (sidebar):
-  - Answer length: short / medium / long
-  - Citation style: APA, IEEE, MLA, AMA, Chicago, Harvard, Vancouver
-  - Toggle scholarly references on/off
-- **Async polling** — submits query, polls with backoff, shows progress while waiting
-
-### Architecture
-
-- `rag/scite.py` — `SciteClient` class handling the async poll-based API:
-  - `POST /api_partner/assistant/poll` → returns `task_id`
-  - `GET /api_partner/assistant/tasks/{task_id}` → polls until `SUCCESS`
-  - Parses responses into `SciteReference`, `SciteTurn`, `SciteResponse` dataclasses
-- `app/pages/scite_ai.py` — Streamlit page with chat UI, history, sidebar settings
-- Demo mode when `SCITE_API_KEY` not set
-
-### API Flow
-
+```bash
+SCITE_API_KEY=...            # Assistant API (needs the `assistant` scope)
+SCITE_MCP_API_KEY=...        # optional fallback: literature search
+SCITE_API_BASE_URL=https://api.scite.ai
+SCITE_TIMEOUT_SECONDS=120
+SCITE_POLL_INTERVAL_SECONDS=1
 ```
-User question
-      |
-      v
-  POST /assistant/poll  (turns[], userInput, answerLength, citationStyle, alwaysUseReferences)
-      |
-      v
-  { "id": "task_abc123" }
-      |
-      v
-  Poll GET /assistant/tasks/task_abc123  (every 2s, up to 120s)
-      |
-      v
-  { "status": "STARTED", "info": { "step": "GENERATING_RESPONSE", ... } }
-      |
-      v
-  { "status": "SUCCESS", "result": { "turns": [{ "role": "assistant", "content": "...", "references": [...] }] } }
-```
+
+**Timing:** ~3 s for the search, then ~2 minutes for the local summary of ten
+papers on this CPU. **Privacy:** unlike the other two tools, the question text
+is sent to scite.ai.
 
 ---
 
@@ -282,8 +307,8 @@ User question
 
 ```bash
 python scripts/smoke_test.py        # 65 checks: guards, citations, scoping, PDF rendering
-python scripts/ui_test.py --no-llm  # 33 checks: clicks the real UI via Streamlit AppTest
-python scripts/ui_test.py           # 46 checks: adds a real answer and a real draft (~2.5 min)
+python scripts/ui_test.py --no-llm  # 42 checks: clicks the real UI via Streamlit AppTest
+python scripts/ui_test.py           # adds a real answer, a real draft and a live Scite query (~5 min)
 python scripts/04_evaluate.py       # Recall@k, refusal accuracy, threshold calibration
 python scripts/06_eval_coverage.py  # retrieval coverage across all 14 organ systems
 python scripts/ask_batch.py --locate  # all 100 example queries, no model needed
@@ -294,7 +319,9 @@ plumbing — including all three refusal layers — can be verified without a GP
 or even a generator. `ui_test.py` exists because pipeline tests cannot catch
 interaction bugs: it was written after a "Go to section" button rendered its
 page correctly and then hid it inside a container that snapped shut. It
-covers the home page, both Knowledge Assistant modes and the Content Studio.
+covers the home page (including the launcher handing a topic to the Content
+Studio), both Knowledge Assistant modes, the Content Studio and the Research
+Platform.
 
 ---
 
@@ -384,7 +411,7 @@ it.
 
 ```bash
 python scripts/smoke_test.py         # 65 checks, stubbed model — no GPU needed
-python scripts/ui_test.py --no-llm   # 20 UI checks
+python scripts/ui_test.py --no-llm   # 42 UI checks
 ./start                              # http://localhost:8501
 ```
 

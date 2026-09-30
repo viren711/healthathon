@@ -1,0 +1,23 @@
+# Portal theme. Read by `streamlit run` from the repository root (./start).
+# Colours are set for both light and dark so neither mode falls back to the
+# default red accent.
+
+[theme]
+primaryColor = "#0F766E"          # clinical teal: primary buttons, links, active nav
+showWidgetBorder = true
+baseRadius = "0.6rem"
+
+[theme.light]
+primaryColor = "#0F766E"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F7F7"
+textColor = "#12302E"
+
+[theme.dark]
+primaryColor = "#0D9488"
+backgroundColor = "#0E1716"
+secondaryBackgroundColor = "#16221F"
+textColor = "#E6F0EE"
+
+[client]
+toolbarMode = "minimal"

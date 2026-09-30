@@ -30,6 +30,7 @@ sys.path.insert(0, str(ROOT))
 ENTRY = str(ROOT / "app" / "streamlit_app.py")
 APP = str(ROOT / "app" / "views" / "oncology_reference.py")
 STUDIO = str(ROOT / "app" / "views" / "content_studio.py")
+RESEARCH = str(ROOT / "app" / "views" / "research_platform.py")
 
 failures: list[str] = []
 
@@ -48,72 +49,11 @@ def goto_buttons(at):
     return [i for i, b in enumerate(at.button) if "Go to section" in b.label]
 
 
-def goto_page(at, page_name: str) -> bool:
-    page_hash = next(
-        (
-            page_hash
-            for page_hash, info in at._registered_pages.items()
-            if info.get("page_name") == page_name
-        ),
-        None,
-    )
-    if page_hash is None:
-        return False
-    at._page_hash = page_hash
-    at.run()
-    return True
-
-
-def check_landing_and_pages(AppTest) -> None:
-    print("\n== Landing and assistant pages ==")
-    at = AppTest.from_file(APP, default_timeout=300)
-    at.run()
-    # Default page is now Oncology Reference
-    check("app opens to Oncology Reference", [title.value for title in at.title] == ["Oncology Reference"],
-          str([title.value for title in at.title]))
-
-    # Navigate to Scite AI page
-    at.switch_page("pages/scite_ai.py").run()
-    check("Scite page opens", [title.value for title in at.title] == ["Scite AI"],
-          str([title.value for title in at.title]))
-    check("Scite page has a question editor", len(at.text_area) == 1,
-          f"{len(at.text_area)} editor(s)")
-    check("Scite page has assistant settings", len(at.sidebar.selectbox) == 2,
-          f"{len(at.sidebar.selectbox)} setting(s)")
-    at.text_area[0].set_value("What is Scite?").run()
-    at.button(key="send_scite").click().run()
-    check("Scite page returns an assistant response", len(at.chat_message) >= 2,
-          f"{len(at.chat_message)} message(s)")
-    check("Scite question field clears after summarizing", at.text_area[0].value == "",
-          repr(at.text_area[0].value))
-    check(
-        "Scite page handles the response without an exception",
-        not at.exception,
-        f"{len(at.expander)} source card(s)",
-    )
-    check("Scite page has no exception", not at.exception)
-
-    # Navigate back to Oncology Reference using its page hash
-    onco_hash = next(
-        h for h, info in at._registered_pages.items()
-        if info.get("page_name") == "Oncology Reference"
-    )
-    at._page_hash = onco_hash
-    at.run()
-    check("Oncology Reference page reopens", [title.value for title in at.title] == ["Oncology Reference"],
-          str([title.value for title in at.title]))
-    check("Oncology Reference has no exception", not at.exception)
-
-
 def test_find_mode(AppTest) -> None:
     print("\n== Find mode ==")
     at = AppTest.from_file(APP, default_timeout=300)
     at.run()
     check("app starts without an exception", not at.exception)
-    check("oncology reference page opens", goto_page(at, "Oncology Reference"),
-          str(list(at._registered_pages.values())))
-    if [title.value for title in at.title] != ["Oncology Reference"]:
-        return
 
     at.radio[0].set_value("Find a topic").run()
     at.text_input[0].set_value("brachytherapy").run()
@@ -133,10 +73,6 @@ def test_find_mode(AppTest) -> None:
     # A nonsense topic must find nothing rather than the nearest five passages.
     at2 = AppTest.from_file(APP, default_timeout=300)
     at2.run()
-    check("second app instance opens oncology reference", goto_page(at2, "Oncology Reference"),
-          str(list(at2._registered_pages.values())))
-    if [title.value for title in at2.title] != ["Oncology Reference"]:
-        return
     at2.radio[0].set_value("Find a topic").run()
     at2.text_input[0].set_value("What is the capital of France?").run()
     check("an out-of-corpus topic returns no places", len(goto_buttons(at2)) == 0,
@@ -147,10 +83,6 @@ def test_scope_selector(AppTest) -> None:
     print("\n== Section selector ==")
     at = AppTest.from_file(APP, default_timeout=300)
     at.run()
-    check("oncology reference page opens", goto_page(at, "Oncology Reference"),
-          str(list(at._registered_pages.values())))
-    if [title.value for title in at.title] != ["Oncology Reference"]:
-        return
     labels = [sb.label for sb in at.selectbox]
     check("an organ-system selector exists", "Organ system" in labels, str(labels))
     if "Organ system" not in labels:
@@ -225,10 +157,6 @@ def test_ask_mode(AppTest) -> None:
     print("\n== Ask mode (one real LLM call) ==")
     at = AppTest.from_file(APP, default_timeout=900)
     at.run()
-    check("oncology reference page opens", goto_page(at, "Oncology Reference"),
-          str(list(at._registered_pages.values())))
-    if [title.value for title in at.title] != ["Oncology Reference"]:
-        return
     at.chat_input[0].set_value("What is the lymphatic drainage of the oral tongue?").run()
     check("question answered without an exception", not at.exception)
     check("the answer carries a source card", len(at.expander) > 0,
@@ -260,10 +188,28 @@ def test_home(AppTest) -> None:
     headings = " ".join(m.value for m in at.markdown)
     for name in ("Knowledge Assistant", "Content Studio", "Research Platform"):
         check(f"home describes the {name}", name in headings)
-    links = at.get("page_link")
-    check("home links to all three tools", len(links) == 3, f"{len(links)} links")
-    check("the research platform is marked as coming soon",
-          any("Coming soon" in i.value for i in at.info))
+    opens = [b.label for b in at.button if b.label.startswith("Open ")]
+    check("home has a button into each tool", len(opens) == 3, str(opens))
+    groups = at.get("button_group")
+    tasks = [o.content for o in groups[0].proto.options] if groups else []
+    check("the launcher offers all three tasks",
+          tasks == ["Ask the textbooks", "Draft an article", "Search the literature"], str(tasks))
+    check("no tool is marked as a placeholder",
+          not any("Coming soon" in i.value for i in at.info))
+
+    # The launcher hands its text to the chosen tool. "Draft an article" is
+    # the route that needs no model: the studio should open with the topic
+    # already filled in.
+    at.session_state["home_action"] = "Draft an article"
+    at.run()
+    at.text_input(key="home_query").set_value("Managing fatigue during radiotherapy")
+    at.button[0].click().run()  # the launcher's submit button comes first
+    check("launching a draft opens the Content Studio",
+          any("Content Studio" in t.value for t in at.title),
+          str([t.value for t in at.title]))
+    check("the studio topic is pre-filled from the launcher",
+          [t.value for t in at.text_input if t.label == "Topic"] == ["Managing fatigue during radiotherapy"],
+          str([(t.label, t.value) for t in at.text_input]))
 
 
 def test_studio_brief(AppTest) -> None:
@@ -323,6 +269,55 @@ def test_studio_draft(AppTest) -> None:
               body[-1:] in ".!?)*", repr(body[-40:]))
 
 
+def test_research_page(AppTest) -> None:
+    print("\n== Research Platform (no network) ==")
+    at = AppTest.from_file(RESEARCH, default_timeout=300)
+    at.run()
+    check("research page renders without an exception", not at.exception,
+          str([e.value for e in at.exception][:1]))
+    check("research page carries its title",
+          any("Research Platform" in t.value for t in at.title),
+          str([t.value for t in at.title]))
+    check("research page has a question editor", len(at.text_area) == 1,
+          f"{len(at.text_area)} editor(s)")
+    check("answer length and citation style are offered",
+          [sb.label for sb in at.sidebar.selectbox] == ["Answer length", "Citation style"],
+          str([sb.label for sb in at.sidebar.selectbox]))
+    check("the page says questions leave the machine",
+          any("scite.ai" in c.value for c in at.caption))
+    # An empty question must be stopped before any network call.
+    at.button(key="send_scite").click().run()
+    check("an empty question is refused",
+          any("Enter a question" in w.value for w in at.warning))
+
+
+def test_research_live(AppTest) -> None:
+    print("\n== Research Platform (live: scite.ai + local summary) ==")
+    import os
+
+    from rag.config import _load_dotenv
+
+    _load_dotenv()
+    if not (os.environ.get("SCITE_API_KEY") or os.environ.get("SCITE_MCP_API_KEY")):
+        print("(skipping: no SCITE_API_KEY or SCITE_MCP_API_KEY in .env)")
+        return
+    at = AppTest.from_file(RESEARCH, default_timeout=600)
+    at.run()
+    at.text_area[0].set_value(
+        "Does a close surgical margin alone warrant adjuvant radiotherapy in oral "
+        "squamous cell carcinoma?").run()
+    at.button(key="send_scite").click().run()
+    check("the question is answered without an exception", not at.exception,
+          str([e.value for e in at.exception][:1]))
+    check("the question and a reply are shown", len(at.chat_message) >= 2,
+          f"{len(at.chat_message)} message(s)")
+    check("the reply lists sources", len(at.expander) >= 1, f"{len(at.expander)} source card(s)")
+    errors = [e.value for e in at.error]
+    check("no request error is shown", not errors, str(errors)[:200])
+    check("the question box clears after sending", at.text_area[0].value == "",
+          repr(at.text_area[0].value))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--no-llm", action="store_true",
@@ -335,11 +330,12 @@ def main() -> int:
         print("streamlit.testing is unavailable -- upgrade streamlit", file=sys.stderr)
         return 1
 
-    check_landing_and_pages(AppTest)
+    test_home(AppTest)
 
     test_find_mode(AppTest)
     test_scope_selector(AppTest)
     test_studio_brief(AppTest)
+    test_research_page(AppTest)
 
     if args.no_llm:
         print("\n(skipping Ask mode and drafting: --no-llm)")
@@ -350,6 +346,7 @@ def main() -> int:
         if ok:
             test_ask_mode(AppTest)
             test_studio_draft(AppTest)
+            test_research_live(AppTest)
         else:
             print(f"\n(skipping Ask mode and drafting: model server unreachable -- {detail})")
 

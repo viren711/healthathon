@@ -345,7 +345,7 @@ def step_draft(model_id: str) -> None:
 
 # ---------------------------------------------------------------------------
 
-st.title("✍️ Content Studio")
+st.title(":material/edit_note: Content Studio")
 st.caption(
     "Describe the piece you want to write. You will get a few questions, then a "
     "draft to review, edit and publish."
