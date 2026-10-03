@@ -144,7 +144,7 @@ trusting the old numbers.
 
 ### Section filtering — one pathology at a time
 
-The left-hand selector narrows everything to a single disease area: pick an
+The two selectors above the question box narrow everything to a single disease area: pick an
 organ system, then optionally one pathology inside it ("Head & Neck" → "Oral
 cavity & tongue"). Both Ask and Find respect it.
 

@@ -111,8 +111,11 @@ def test_scope_selector(AppTest) -> None:
         return
 
     pathbox.set_value(tongue).run()
-    check("the active section is confirmed to the user",
-          any("Answering only from" in m.value for m in at.success), "")
+    main_boxes = [sb.label for sb in at.main.selectbox]
+    check("organ and pathology selectors are on the main page, not the sidebar",
+          {"Organ system", "Pathology"} <= set(main_boxes)
+          and not any(sb.label in ("Organ system", "Pathology") for sb in at.sidebar.selectbox),
+          str(main_boxes))
     check("no exception when scoping", not at.exception)
 
     # An active scope must be visible in the MAIN panel, not just the sidebar.

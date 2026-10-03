@@ -48,7 +48,7 @@ Two modes over the same index:
   reference.
 
 Filter either mode to a single organ system or pathology ("Head & Neck → Oral
-cavity & tongue") from the left-hand selector.
+cavity & tongue") with the two selectors above the question box.
 
 ---
 

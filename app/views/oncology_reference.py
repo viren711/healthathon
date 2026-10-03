@@ -66,7 +66,14 @@ def load_taxonomy():
 
 
 def scope_selector():
-    """Left-hand section picker. Returns (scope_id, human label).
+    """Organ-system / pathology picker, side by side above the question box.
+    Returns (scope_id, human label).
+
+    It lives in the main panel, not the sidebar, and is drawn before the index
+    loads: in the sidebar it stayed empty for the 15-35 s the index takes to
+    load and was easy to lose when the sidebar was collapsed. The pathology
+    box is always visible (disabled until a system is chosen) so it is clear
+    the second level exists.
 
     Two levels: pick an organ system, then optionally narrow to one pathology
     inside it. A flat list of 77 pathologies would be unusable, and a
@@ -91,9 +98,16 @@ def scope_selector():
     # instead, which comes up on its default -- the standard idiom for a
     # programmatic reset.
     nonce = st.session_state.get("scope_nonce", 0)
-    choice = st.selectbox("Organ system", labels, key=f"sys_choice_{nonce}")
+    left, right = st.columns(2)
+    with left:
+        choice = st.selectbox("Organ system", labels, key=f"sys_choice_{nonce}")
 
     if choice == labels[0]:
+        with right:
+            st.selectbox(
+                "Pathology", ["All pathologies"], disabled=True,
+                key=f"path_idle_{nonce}", help="Choose an organ system first.",
+            )
         return None, "All sections"
 
     system = systems[labels.index(choice) - 1]
@@ -101,7 +115,8 @@ def scope_selector():
     sub_labels = [f"All of {system['label']}"] + [
         f"{p['label']}  ({p['chunks']:,})" for p in paths
     ]
-    sub = st.selectbox("Pathology", sub_labels, key=f"path_choice_{nonce}")
+    with right:
+        sub = st.selectbox("Pathology", sub_labels, key=f"path_choice_{nonce}")
     if sub == sub_labels[0]:
         return system["id"], system["label"]
     path = paths[sub_labels.index(sub) - 1]
@@ -441,6 +456,10 @@ def main() -> None:
         "to the page it is on."
     )
 
+    # Section first: it needs only taxonomy.json, so it is usable at once
+    # while the index and models load below.
+    scope, scope_label = scope_selector()
+
     try:
         meta, client = boot()
     except Exception as exc:  # noqa: BLE001 - surface any startup failure in the UI
@@ -449,13 +468,6 @@ def main() -> None:
         return
 
     with st.sidebar:
-        st.subheader("Section")
-        scope, scope_label = scope_selector()
-        if scope:
-            st.success(f"Answering only from: **{scope_label}**")
-        else:
-            st.caption("Searching everything in both books.")
-
         st.subheader("Index")
         st.write(f"**Chunks:** {meta['chunk_count']:,}")
         st.write(f"**Books:** {', '.join(meta.get('books', []))}")
