@@ -1,23 +1,16 @@
 # Portal theme. Read by `streamlit run` from the repository root (./start).
-# Colours are set for both light and dark so neither mode falls back to the
-# default red accent.
 
 [theme]
+# Always light, whatever the browser or system prefers. The sun/moon button at
+# top right switches a page to dark (it inverts the light look, see
+# app/streamlit_app.py), and remembers the choice in the browser.
+base = "light"
 primaryColor = "#0F766E"          # clinical teal: primary buttons, links, active nav
+backgroundColor = "#FAFDFC"
+secondaryBackgroundColor = "#EAF4F2"
+textColor = "#12302E"
 showWidgetBorder = true
 baseRadius = "0.6rem"
-
-[theme.light]
-primaryColor = "#0F766E"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F3F7F7"
-textColor = "#12302E"
-
-[theme.dark]
-primaryColor = "#0D9488"
-backgroundColor = "#0E1716"
-secondaryBackgroundColor = "#16221F"
-textColor = "#E6F0EE"
 
 [client]
 toolbarMode = "minimal"

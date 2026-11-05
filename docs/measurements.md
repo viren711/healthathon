@@ -46,7 +46,7 @@ price of searching 16x more text for the same question. The scope numbers are
 the ones that changed the product: before full-book indexing, every one of
 those 12 non-tongue questions was refused outright.
 
-**Find mode over all 50 queries in `queries.txt`:** 41 return locations, 9
+**Find mode over all 50 queries in `eval/queries.txt`:** 41 return locations, 9
 return nothing, at **3.6 s/query** with no LLM. All five genuinely off-topic
 queries return zero places. Two of the "should abstain" queries still return
 locations, correctly: asking where *proton therapy* is discussed is a

@@ -1,0 +1,77 @@
+guidelines:
+- id: gastroesophageal
+  cancer: Gastroesophageal cancer
+  title: Immunotherapy and Targeted Therapy for Advanced Gastroesophageal Cancer
+  path: data/asco/2026-immunotherapy-and-targeted-therapy-for-advanced-gastroesophageal-cancer-asco-living-guideline.pdf
+- id: mcrpc
+  cancer: Prostate cancer
+  title: Systemic Therapy in Metastatic Castration-Resistant Prostate Cancer
+  path: data/asco/2026-systemic-therapy-in-patients-with-metastatic-castration-resistant-prostate-cancer-asco-living-guideline.pdf
+- id: nsclc_driver
+  cancer: Lung cancer (NSCLC)
+  title: Stage IV NSCLC With Driver Alterations
+  path: data/asco/2026-therapy-for-stage-iv-non-small-cell-lung-cancer-with-driver-alterations-asco-living-guideline.pdf
+- id: nsclc_nodriver
+  cancer: Lung cancer (NSCLC)
+  title: Stage IV NSCLC Without Driver Alterations
+  path: data/asco/2026-therapy-for-stage-iv-non-small-cell-lung-cancer-without-driver-alterations-asco-living-guideline.pdf
+- id: myeloma
+  cancer: Multiple myeloma
+  title: Treatment of Multiple Myeloma (living guideline)
+  path: data/asco/2026-treatment-of-multiple-myeloma-asco-living-guideline.pdf
+- id: glioma
+  cancer: Brain tumor (adult glioma)
+  title: Diffuse Astrocytic and Oligodendroglial Tumors in Adults
+  path: data/asco/blakeley-et-al-2025-therapy-for-diffuse-astrocytic-and-oligodendroglial-tumors-in-adults-asco-sno-guideline-rapid.pdf
+- id: breast_hr
+  cancer: Breast cancer
+  title: Medical Therapy for HR-Positive, HER2-Negative Stage I–III Breast Cancer
+  path: data/asco/caswell-jin-et-al-2026-medical-therapy-for-hormone-receptor-positive-her2-negative-stage-i-iii-breast-cancer-asco.pdf
+- id: communication
+  cancer: Any cancer (cross-cutting)
+  title: Patient–Clinician Communication
+  path: data/asco/gilligan-et-al-2026-patient-clinician-communication-asco-guideline-update.pdf
+- id: wbc_gf
+  cancer: Any cancer (cross-cutting)
+  title: WBC Growth Factors (G-CSF)
+  path: data/asco/gyawali-et-al-2026-wbc-growth-factors-asco-guideline-update.pdf
+- id: myeloma_ontario
+  cancer: Multiple myeloma
+  title: Treatment of Multiple Myeloma (ASCO–Ontario Health)
+  path: data/asco/hicks-et-al-2026-treatment-of-multiple-myeloma-asco-ontario-health-(cancer-care-ontario)-living-guideline.pdf
+- id: ovarian_recur
+  cancer: Ovarian cancer
+  title: Systemic Treatment of Ovarian Cancer Recurrence
+  path: data/asco/lesnock-et-al-2026-systemic-treatment-of-ovarian-cancer-recurrence-asco-living-guideline-version-2026-1-0.pdf
+- id: ctdna
+  cancer: Any cancer (cross-cutting)
+  title: Circulating Tumor DNA Testing in Solid Tumors and Lymphoma
+  path: data/asco/lockwood-et-al-2026-circulating-tumor-dna-testing-in-solid-tumors-and-lymphoma-asco-guideline.pdf
+- id: pregnancy
+  cancer: Any cancer (cross-cutting)
+  title: Management of Cancer During Pregnancy
+  path: data/asco/loren-et-al-2025-management-of-cancer-during-pregnancy-asco-guideline.pdf
+- id: breast_followup
+  cancer: Breast cancer
+  title: Breast Cancer Follow-up and Surveillance After Primary Treatment
+  path: data/asco/nahleh-et-al-2026-breast-cancer-follow-up-and-surveillance-after-primary-treatment-asco-guideline-update.pdf
+- id: gepnet
+  cancer: Neuroendocrine tumor (GEP-NET)
+  title: Symptom Management for Well-Differentiated GEP-NETs
+  path: data/asco/perez-et-al-2025-symptom-management-for-well-differentiated-gastroenteropancreatic-neuroendocrine-tumors-asco-guideline.pdf
+- id: thyroid
+  cancer: Thyroid cancer
+  title: Systemic Treatment of Thyroid Cancer
+  path: data/asco/saba-et-al-2026-systemic-treatment-of-thyroid-cancer-asco-guideline.pdf
+- id: melanoma
+  cancer: Melanoma
+  title: Systemic Therapy for Melanoma
+  path: data/asco/seth-et-al-2023-systemic-therapy-for-melanoma-asco-guideline-update.pdf
+- id: biliary
+  cancer: Biliary tract cancer
+  title: Treatment of Advanced Biliary Tract Cancer
+  path: data/asco/shroff-et-al-2026-treatment-of-advanced-biliary-tract-cancer-asco-living-guideline-version-2026-1-0.pdf
+- id: ovarian_parp
+  cancer: Ovarian cancer
+  title: PARP Inhibitors in the Management of Ovarian Cancer
+  path: data/asco/tew-et-al-2026-parp-inhibitors-in-the-management-of-ovarian-cancer-asco-living-guideline-version-2026-1-0.pdf

@@ -69,7 +69,14 @@ def build_page_map(cfg: dict, books_cfg: dict) -> tuple[dict, dict]:
     """
     ranges = {}
     for book in books_cfg["books"]:
-        ranges[book["id"]] = chapter_ranges(ROOT / book["path"], book["pages"])
+        if book.get("use_pdf_outline", True):
+            ranges[book["id"]] = chapter_ranges(ROOT / book["path"], book["pages"])
+        else:
+            # A PDF whose outline cannot be trusted: use the hand-written map,
+            # the same one Stage 1 chaptered the book with.
+            ranges[book["id"]] = {
+                c["num"]: (c["start"], c["end"]) for c in book.get("chapter_map", [])
+            }
 
     page_to_path: dict[tuple[str, int], str] = {}
     meta: dict[str, dict] = {}
@@ -118,8 +125,19 @@ def build_page_map(cfg: dict, books_cfg: dict) -> tuple[dict, dict]:
     return page_to_path, meta
 
 
-def tag_rows(rows: list[dict], page_to_path: dict, meta: dict, fallback: str) -> None:
-    """Assign organ_system / pathology to every chunk, in place."""
+def tag_rows(
+    rows: list[dict],
+    page_to_path: dict,
+    meta: dict,
+    fallback: str,
+    short_to_id: dict[str, str] | None = None,
+) -> None:
+    """Assign organ_system / pathology to every chunk, in place.
+
+    `short_to_id` maps a chunk's `book_short` ("MD Anderson") to the book id
+    the chapter map is keyed on ("mdanderson").
+    """
+    short_to_id = short_to_id or {}
     # DeVita's single head-and-neck chapter has no internal chapter boundary
     # to split the tongue out with, so Stage 1's tongue tiering stands in.
     refine_target = next(
@@ -127,7 +145,8 @@ def tag_rows(rows: list[dict], page_to_path: dict, meta: dict, fallback: str) ->
     )
 
     for row in rows:
-        book = (row.get("book_short") or "").lower()
+        short = (row.get("book_short") or "").lower()
+        book = short_to_id.get(short, short)
         page = row.get("pdf_page_start") or 0
         pid = page_to_path.get((book, page))
 
@@ -183,6 +202,7 @@ def main() -> int:
     print(f"  {len(meta) - 1} pathologies over {len(page_to_path):,} mapped pages")
 
     fallback = cfg["fallback"]["id"]
+    short_to_id = {b["short"].lower(): b["id"] for b in books_cfg["books"]}
     targets = [ROOT / rag_cfg["paths"]["chunks_file"]]
     index_chunks = path_of("index_dir") / "chunks.jsonl"
     if index_chunks.exists():
@@ -194,7 +214,7 @@ def main() -> int:
             print(f"  skip (missing): {target}")
             continue
         rows = read_jsonl(target)
-        tag_rows(rows, page_to_path, meta, fallback)
+        tag_rows(rows, page_to_path, meta, fallback, short_to_id)
         write_jsonl(target, rows)
         counts = Counter(r["pathology"] for r in rows)
         print(f"  tagged {len(rows):,} chunks -> {target.relative_to(ROOT)}")

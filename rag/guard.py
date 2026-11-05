@@ -69,6 +69,29 @@ CORPUS_SEED_QUESTIONS = [
 ]
 
 
+def _settings(corpus: str = "books") -> dict:
+    """Gate thresholds and refusal messages for one corpus.
+
+    The patient corpus overrides only what config/patient.yaml sets; the
+    citation rules (sentinel, range checks, repair) are shared.
+    """
+    cfg = load_config()
+    if corpus != "patient":
+        return {
+            "topic": cfg["guard"]["topic"],
+            "grounding": cfg["guard"]["grounding"],
+            "messages": cfg["messages"],
+        }
+    from rag.config import load_patient_config
+
+    pcfg = load_patient_config()
+    return {
+        "topic": {**cfg["guard"]["topic"], **pcfg["guard"]["topic"], "scope": "corpus"},
+        "grounding": {**cfg["guard"]["grounding"], **pcfg["guard"]["grounding"]},
+        "messages": {**cfg["messages"], **pcfg["messages"]},
+    }
+
+
 @dataclass
 class GateResult:
     """Outcome of a guard layer. `allowed=False` means stop and use `message`."""
@@ -117,7 +140,17 @@ def _seed_vectors():
     return _seed_vectors_for(_scope())
 
 
-def topic_gate(query: str, query_vec: np.ndarray | None = None) -> GateResult:
+@lru_cache(maxsize=1)
+def _patient_seed_vectors():
+    from rag.config import load_patient_config
+    from rag.retriever import get_retriever
+
+    return get_retriever("patient").embed_query_batch(load_patient_config()["seed_questions"])
+
+
+def topic_gate(
+    query: str, query_vec: np.ndarray | None = None, corpus: str = "books"
+) -> GateResult:
     """Cheap pre-retrieval scope check. Never calls the LLM.
 
     What counts as "in scope" depends on guard.topic.scope:
@@ -135,11 +168,11 @@ def topic_gate(query: str, query_vec: np.ndarray | None = None) -> GateResult:
     the books actually answer a medical question is the grounding gate's job,
     and it does that on evidence rather than on vocabulary.
     """
-    cfg = load_config()
-    gcfg = cfg["guard"]["topic"]
-    msg = cfg["messages"]["out_of_scope"].strip()
+    settings = _settings(corpus)
+    gcfg = settings["topic"]
+    msg = settings["messages"]["out_of_scope"].strip()
     tongue_re, support_re, site_re = _lexicon_patterns()
-    scope = _scope()
+    scope = "corpus" if corpus == "patient" else _scope()
 
     if not query or len(query.strip()) < 3:
         return GateResult(False, "empty query", msg)
@@ -175,12 +208,13 @@ def topic_gate(query: str, query_vec: np.ndarray | None = None) -> GateResult:
 
     from rag.retriever import get_retriever
 
-    retriever = get_retriever()
+    retriever = get_retriever(corpus)
     if query_vec is None:
         query_vec = retriever.embed_query(query)
 
+    seeds = _patient_seed_vectors() if corpus == "patient" else _seed_vectors()
     centroid_sim = retriever.centroid_similarity(query_vec)
-    seed_sim = float(np.max(_seed_vectors() @ query_vec[0]))
+    seed_sim = float(np.max(seeds @ query_vec[0]))
 
     detail = {
         "scope": scope,
@@ -229,11 +263,11 @@ def topic_gate(query: str, query_vec: np.ndarray | None = None) -> GateResult:
 # ---------------------------------------------------------------------------
 
 
-def grounding_gate(hits: list) -> GateResult:
+def grounding_gate(hits: list, corpus: str = "books") -> GateResult:
     """Refuse before spending an LLM call if nothing retrieved is good enough."""
-    cfg = load_config()
-    gcfg = cfg["guard"]["grounding"]
-    msg = cfg["messages"]["not_available"].strip()
+    settings = _settings(corpus)
+    gcfg = settings["grounding"]
+    msg = settings["messages"]["not_available"].strip()
 
     if not hits:
         return GateResult(False, "no chunks retrieved", msg, detail={"supporting": 0})
@@ -259,7 +293,7 @@ def grounding_gate(hits: list) -> GateResult:
     return GateResult(True, "sufficient supporting evidence", detail=detail)
 
 
-def filter_supporting(hits: list) -> list:
+def filter_supporting(hits: list, corpus: str = "books") -> list:
     """Choose which passages the model is shown.
 
     This is a different question from the one `grounding_gate` answers, and
@@ -275,7 +309,7 @@ def filter_supporting(hits: list) -> list:
     the best hit as well. The gate still decides whether to answer; this only
     decides how much context that answer gets.
     """
-    gcfg = load_config()["guard"]["grounding"]
+    gcfg = _settings(corpus)["grounding"]
     if not hits:
         return []
     use_rerank = hits[0].rerank_score is not None
@@ -292,7 +326,7 @@ def filter_supporting(hits: list) -> list:
 _CITE = re.compile(r"\[(\d{1,2})\]")
 
 
-def verify_answer(answer: str, n_sources: int) -> GateResult:
+def verify_answer(answer: str, n_sources: int, corpus: str = "books") -> GateResult:
     """Reject an answer that is not demonstrably tied to the supplied sources.
 
     KNOWN LIMIT, stated plainly: this verifies that a citation marker EXISTS
@@ -318,7 +352,7 @@ def verify_answer(answer: str, n_sources: int) -> GateResult:
     """
     cfg = load_config()
     ccfg = cfg["guard"]["citation"]
-    msg = cfg["messages"]["not_available"].strip()
+    msg = _settings(corpus)["messages"]["not_available"].strip()
 
     if not answer or not answer.strip():
         return GateResult(False, "model returned nothing", msg)

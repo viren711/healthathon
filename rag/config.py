@@ -59,3 +59,24 @@ def load_config() -> dict[str, Any]:
 
 def path_of(key: str) -> Path:
     return ROOT / load_config()["paths"][key]
+
+
+@lru_cache(maxsize=1)
+def load_patient_config() -> dict[str, Any]:
+    """config/patient.yaml, with the guide registry attached as `guides`.
+
+    Only what differs for the Patient Portal lives there; the embedder,
+    reranker, retrieval pool sizes and LLM endpoint are shared with
+    load_config(), because both indexes are searched with the same models.
+    """
+    cfg = yaml.safe_load((ROOT / "config" / "patient.yaml").read_text(encoding="utf-8"))
+    registry = yaml.safe_load((ROOT / cfg["paths"]["guides"]).read_text(encoding="utf-8"))
+    cfg["guides"] = registry["guides"]
+    cfg["categories"] = registry["categories"]
+    if os.environ.get("PATIENT_INDEX_DIR"):
+        cfg["paths"]["index_dir"] = os.environ["PATIENT_INDEX_DIR"]
+    return cfg
+
+
+def patient_path(key: str) -> Path:
+    return ROOT / load_patient_config()["paths"][key]

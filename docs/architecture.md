@@ -7,8 +7,10 @@ cited answer.
 This document covers the **Knowledge Assistant** — the textbook-grounded part
 of the platform. The portal also hosts the **Content Studio** (article
 drafting, [content-studio.md](content-studio.md)) and the **Research
-Platform** (literature answers via Scite, below); all three share the process
-layout and the model server described in §1.
+Platform** (literature answers via Scite, below) and the **Patient Portal**
+(answers and reading material from the NCCN Guidelines for Patients,
+[patient-portal.md](patient-portal.md)); all four share the process layout
+and the model server described in §1.
 
 Everything here runs on one machine with no GPU. That constraint shaped most
 of the design decisions, and where it did, the reasoning is stated.
@@ -57,6 +59,27 @@ literature search) and then asks the local reference model, through the same
 router, to summarise the returned abstracts and excerpts with `[n]` citations.
 The API keys stay server-side in `.env`.
 
+The **Patient Portal** reuses this whole pipeline on a **second index**
+(`artifacts/index_patient`, built from the NCCN patient guides). `rag/` takes a
+`corpus` argument — `"books"` or `"patient"` — that selects the index, the
+gate thresholds and messages, and the prompt; the two retrievers share one
+loaded embedder and cross-encoder. A regex safety screen runs before
+retrieval for patient questions only.
+
+**Voice and languages** sit outside the pipeline, at both ends
+(`rag/sarvam.py`, `app/voice_ui.py`; see [voice.md](voice.md)). A spoken
+or non-English question is transcribed and translated to English *before*
+`answer_question`; only the checked English answer is translated back, with
+its citation markers re-attached sentence by sentence. The pipeline itself
+never sees another language, so the gates, the safety screen and the
+citation check apply unchanged.
+
+**Treatment Guidance** does not use retrieval or a model. Stage 9
+(`scripts/09_build_asco.py`) parses the ASCO guidelines into recommendation
+records and verbatim statistic sentences (`corpus/asco/`); `rag/guidance.py`
+reads a case into structured fields and ranks the records against it by rules,
+with the reasons shown. The vocabulary both sides use is `rag/guidance_lexicon.py`.
+
 The retrieval stack is a **library, not a service**. `rag/` is imported
 directly by the Streamlit process; there is no HTTP hop between the UI and
 retrieval. Only the generator is a separate process, and only because
@@ -81,6 +104,9 @@ putting an HTTP API in front later is a wrapper, not a refactor.
 | `rag/pdfview.py` | renders source PDF pages | PyMuPDF |
 | `writer/studio.py` | Content Studio: questions, article prompt, tidy-up | `rag/llm.py` |
 | `rag/scite.py` | Research Platform: Scite Assistant API and MCP search clients | stdlib only |
+| `rag/patient_safety.py` | Patient Portal: crisis / emergency / personal-decision screen, run before retrieval | config |
+| `rag/sarvam.py` | voice and languages: transcribe, detect, translate with citations aligned, speak; disk cache, usage log, budget, mock | `sarvamai` SDK, `config/voice.yaml` |
+| `rag/guidance.py` | Treatment Guidance: case reader and rule-based ranking of ASCO recommendations | `rag/guidance_lexicon.py` |
 | `app/streamlit_app.py` | entrypoint: top navigation bar and shared layout CSS | — |
 | `app/views/*.py` | one file per page, view layer only — no retrieval or prompt logic | `rag/`, `writer/` |
 
@@ -497,7 +523,7 @@ layer 3 is the guarantee.
 | suite | checks | needs a model? |
 |---|---|---|
 | `scripts/smoke_test.py` | 65 — guards, citations, scoping, length fitting, PDF rendering, stale-index detection | no (stubbed) |
-| `scripts/ui_test.py` | 42 offline, plus live Ask, drafting and Scite checks — home page, Find, Ask, section filter, Content Studio, Research Platform, via Streamlit `AppTest` | Ask, drafting and the live Scite query only |
+| `scripts/ui_test.py` | offline checks plus live Ask, drafting, Scite and patient-answer checks — home page, Find, Ask, section filter, Content Studio, Research Platform, Patient Portal, via Streamlit `AppTest` | the live checks only |
 | `scripts/04_evaluate.py` | Recall@k, MRR, refusal accuracy, calibration | `--with-llm` only |
 | `scripts/06_eval_coverage.py` | organ-system coverage, 38 questions | no |
 

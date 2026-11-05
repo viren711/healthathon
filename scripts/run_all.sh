@@ -77,6 +77,31 @@ done
 step "Stage 4b: calibrating thresholds (writes config/rag.yaml)"
 "$PYTHON" scripts/04_evaluate.py --apply --workers 4
 
+# --- Patient Portal: its own corpus and index, from the NCCN patient guides --
+# Optional: skipped when data/nccn/ is absent, so the textbook build stands alone.
+if [[ -d data/nccn ]]; then
+    step "Stage 7: Patient Portal corpus from the NCCN Guidelines for Patients"
+    "$PYTHON" scripts/07_build_patient_corpus.py --workers "$WORKERS"
+    step "Stage 3 (patient): embedding the patient guides"
+    "$PYTHON" scripts/03_build_index.py --chunks corpus/patient/chunks.jsonl \
+        --out-dir artifacts/index_patient
+    step "Stage 8: Patient Portal evaluation (writes config/patient.yaml)"
+    "$PYTHON" scripts/08_eval_patient.py --apply || true
+else
+    echo "  (no data/nccn/ -- skipping the Patient Portal build)"
+fi
+
+# --- Treatment Guidance: recommendation records from the ASCO guidelines ----
+# Optional: skipped when data/asco/ is absent. Seconds, no model.
+if [[ -d data/asco ]]; then
+    step "Stage 9: Treatment Guidance records from the ASCO guidelines"
+    "$PYTHON" scripts/09_build_asco.py --workers "$WORKERS"
+    step "Stage 10: Treatment Guidance evaluation"
+    "$PYTHON" scripts/10_eval_guidance.py || true
+else
+    echo "  (no data/asco/ -- skipping the Treatment Guidance build)"
+fi
+
 step "Smoke test: guards, citations, stale-index detection"
 "$PYTHON" scripts/smoke_test.py
 
@@ -95,7 +120,7 @@ Start the platform:
     ./start
 
 That runs the model server and the portal as children of your terminal, so
-closing it stops both. Open http://localhost:8501
+closing it stops both. Open https://localhost:8501
 
 Other checks:
 

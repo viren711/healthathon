@@ -1,0 +1,119 @@
+# Ground truth for Treatment Guidance (scripts/10_eval_guidance.py).
+#
+# Each case is written the way a clinician would type it. `expect` names the
+# recommendation(s) that answer it, as {guideline id: [numbers]}, read off the
+# guideline's own recommendation text -- not off the matcher's output. A case
+# passes when any expected recommendation is in the top 3.
+#
+# `read` (optional) is what the case reader must extract.
+# `none: true` means no guideline here covers it: nothing may be returned.
+
+cases:
+  - text: "62-year-old never smoker, stage IV lung adenocarcinoma, EGFR exon 19 deletion, ECOG 1, treatment naive. Best first-line therapy?"
+    expect: {nsclc_driver: ["1.1", "1.2"]}
+    read: {cancer: "Lung cancer (NSCLC)", biomarkers: [EGFR], settings: [first-line]}
+  - text: "Stage IV NSCLC with EGFR L858R, progressed on osimertinib after 18 months. What next?"
+    expect: {nsclc_driver: ["2.1"]}
+    read: {prior: [osimertinib], settings: [second-line]}
+  - text: "Stage IV NSCLC, EGFR exon 19 deletion, progressed on osimertinib and then on carboplatin, pemetrexed and amivantamab. Next line?"
+    expect: {nsclc_driver: ["2.3"]}
+  - text: "Metastatic NSCLC with an EGFR exon 20 insertion, untreated. First-line options?"
+    expect: {nsclc_driver: ["1.7"]}
+  - text: "Newly diagnosed stage IV NSCLC with an ALK rearrangement. Which ALK inhibitor first?"
+    expect: {nsclc_driver: ["1.9"]}
+  - text: "ROS1-rearranged metastatic NSCLC that progressed on crizotinib. Next options?"
+    expect: {nsclc_driver: ["2.11"]}
+  - text: "Metastatic NSCLC with a RET fusion, progressed on platinum chemotherapy, no prior RET inhibitor. What now?"
+    expect: {nsclc_driver: ["2.15"]}
+  - text: "Metastatic non-squamous NSCLC, PD-L1 TPS 20%, no actionable driver alterations, ECOG 1. First-line?"
+    expect: {nsclc_nodriver: ["1.9", "1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16"]}
+    read: {pdl1: 20, histology: non-squamous}
+  - text: "Metastatic squamous NSCLC, PD-L1 TPS 70%, EGFR and ALK negative, ECOG 0. First-line options?"
+    expect: {nsclc_nodriver: ["2.1"]}
+    read: {pdl1: 70, histology: squamous, not_biomarkers: [EGFR, ALK]}
+  - text: "Unresectable metastatic cutaneous melanoma, BRAF V600E, no prior systemic therapy. First-line?"
+    expect: {melanoma: ["3.2.1"]}
+  - text: "Resected stage IIIB melanoma, BRAF V600E mutant. Adjuvant options?"
+    expect: {melanoma: ["2.2"]}
+  - text: "Resected stage IIB melanoma. Should adjuvant therapy be offered?"
+    expect: {melanoma: ["2.1.1"]}
+  - text: "Newly diagnosed advanced epithelial ovarian cancer, germline BRCA1 mutation, complete response to first-line platinum chemotherapy. Maintenance?"
+    expect: {ovarian_parp: ["2.2", "2.4"]}
+  - text: "Platinum-sensitive recurrent ovarian cancer. Which chemotherapy combination?"
+    expect: {ovarian_recur: ["1.1.1", "1.1.2", "1.1.3"]}
+  - text: "Progressive radioiodine-refractory differentiated thyroid cancer, no targetable alteration. First-line systemic therapy?"
+    expect: {thyroid: ["1.1"]}
+  - text: "Radioiodine-refractory thyroid cancer with a RET fusion, first-line systemic therapy?"
+    expect: {thyroid: ["2.1.1", "2.1"]}
+  - text: "Anaplastic thyroid cancer with BRAF V600E mutation, first-line?"
+    expect: {thyroid: ["10.1", "10.1.1"]}
+  - text: "Advanced HER2-positive gastric adenocarcinoma, pMMR, PD-L1 CPS 10, untreated. First-line?"
+    expect: {gastroesophageal: ["3.1", "3.2"]}
+    read: {biomarkers: [HER2]}
+  - text: "Metastatic esophageal squamous cell carcinoma, PD-L1 1 or more, untreated. First-line therapy?"
+    expect: {gastroesophageal: ["4.1"]}
+  - text: "Metastatic castration-resistant prostate cancer after abiraterone, BRCA2 mutation. Options?"
+    expect: {mcrpc: ["1.2.1"]}
+  - text: "Advanced cholangiocarcinoma with an IDH1 mutation, progressed after gemcitabine-cisplatin-durvalumab. Next?"
+    expect: {biliary: ["4.2"]}
+  - text: "Advanced intrahepatic cholangiocarcinoma, FGFR2 fusion, after first-line chemotherapy. What targeted therapy?"
+    expect: {biliary: ["4.3"]}
+  - text: "Newly diagnosed advanced biliary tract cancer, pMMR. First-line systemic therapy?"
+    expect: {biliary: ["2.1"]}
+  - text: "Oligodendroglioma, IDH-mutant, 1p19q codeleted, WHO grade 3, after resection. Further treatment?"
+    expect: {glioma: ["1.3"]}
+  - text: "Metastatic small intestinal neuroendocrine tumour with carcinoid syndrome, flushing and diarrhea. Symptom control?"
+    expect: {gepnet: ["1.2"]}
+  - text: "Metastatic pancreatic adenocarcinoma, untreated. First-line?"
+    none: true
+
+# Held out, round 1: written after tuning on `cases`. Scored 5/10 untouched;
+# its misses exposed general bugs that were then fixed, so it is now part of
+# the tuning data and reported as such.
+tuned_after_heldout:
+  - text: "Metastatic NSCLC with BRAF V600E, progressed on carboplatin-pemetrexed-pembrolizumab, no prior BRAF therapy. Next?"
+    expect: {nsclc_driver: ["2.12"]}
+  - text: "Advanced NSCLC, KRAS G12C, progressed after chemo-immunotherapy. Options?"
+    expect: {nsclc_driver: ["2.20"]}
+  - text: "Metastatic NSCLC, MET exon 14 skipping mutation, previously treated with chemotherapy, never had a MET inhibitor. What next?"
+    expect: {nsclc_driver: ["2.14"]}
+  - text: "Advanced cholangiocarcinoma with BRAF V600E, progressed after first-line gemcitabine cisplatin. Targeted option?"
+    expect: {biliary: ["4.4"]}
+  - text: "HER2-positive gastric adenocarcinoma progressing after first-line trastuzumab-based therapy. Second-line?"
+    expect: {gastroesophageal: ["6.2"]}
+  - text: "Astrocytoma, IDH-mutant, 1p19q non-codeleted, WHO grade 3, after surgery. Adjuvant treatment?"
+    expect: {glioma: ["1.6"]}
+  - text: "High-risk smoldering multiple myeloma. Treat or observe?"
+    expect: {myeloma: ["1.1"], myeloma_ontario: ["1.1", "1.2", "1.3"]}
+  - text: "Differentiated thyroid cancer, radioiodine-refractory, progressed on lenvatinib. Subsequent-line therapy?"
+    expect: {thyroid: ["1.2"]}
+  - text: "mCRPC, MSI-high, progressed on enzalutamide and docetaxel. Options?"
+    expect: {mcrpc: ["1.1.5"]}
+  - text: "Advanced biliary tract cancer, dMMR/MSI-H, no prior immunotherapy, progressed on chemotherapy. Next?"
+    expect: {biliary: ["4.1", "2.3"]}
+
+# Round 2: written after every fix above. Its FIRST, untouched run scored 5/10
+# -- that is the honest estimate of accuracy on new cases. Four general fixes
+# followed (transplant eligibility, ESCC vs adenocarcinoma, "PD-L1 below 1",
+# "other than BRCA"), so later runs of this set are no longer held out.
+heldout:
+  - text: "Postmenopausal woman, stage II HR-positive HER2-negative breast cancer, planned neoadjuvant endocrine therapy. Which agent?"
+    expect: {breast_hr: ["4.1", "2.2"]}
+  - text: "Stage I triple-negative breast cancer treated 2 years ago, now in follow-up. How often should she be seen?"
+    expect: {breast_followup: ["1.2.1", "1.2.2"]}
+  - text: "Breast cancer survivor after primary treatment. Should tumor markers like CA 15-3 be checked routinely in follow-up?"
+    expect: {breast_followup: ["2.1"]}
+  - text: "Recurrent ovarian cancer with BRCA mutation, already received PARP inhibitor maintenance after first line. Repeat PARPi maintenance?"
+    expect: {ovarian_parp: ["3.1"]}
+  - text: "Stage I epithelial ovarian cancer after complete surgical staging. Is PARP inhibitor maintenance indicated?"
+    expect: {ovarian_parp: ["2.1"]}
+  - text: "mCRPC with an ATM alteration (HRR gene other than BRCA), progressed after abiraterone. Options?"
+    expect: {mcrpc: ["1.2.2"]}
+  - text: "Metastatic esophageal squamous cell carcinoma, PD-L1 below 1, untreated. First-line therapy?"
+    expect: {gastroesophageal: ["4.2"]}
+  - text: "Newly diagnosed multiple myeloma, transplant-eligible. Which induction regimen?"
+    expect: {myeloma: ["2.2.1"]}
+  - text: "Advanced biliary tract cancer with an NTRK fusion after first-line chemotherapy. Targeted therapy?"
+    expect: {biliary: ["4.7"]}
+  - text: "Metastatic non-squamous NSCLC, PD-L1 TPS <1%, no driver alterations, ECOG 1. First-line?"
+    expect: {nsclc_nodriver: ["1.17", "1.18", "1.19", "1.20", "1.21", "1.22", "1.23"]}

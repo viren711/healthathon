@@ -94,6 +94,79 @@ budget: a definition is two sentences, a management question may need several sh
 paragraphs. Do not pad to reach the limit, and do not stop early because of it."""
 
 
+# The Patient Portal's prompt. It keeps the clinician prompt's two hard rules
+# unchanged -- answer only from the SOURCES, and cite every sentence -- because
+# those are what the citation check enforces. What changes is the reader: a
+# patient or carer, who needs plain words, not clinical shorthand, and who must
+# never be told what to do about their own treatment.
+PATIENT_SYSTEM_PROMPT = """You help people with cancer and their families \
+understand their illness and care. You work ONLY from the numbered SOURCES in \
+the user message: excerpts from the NCCN Guidelines for Patients. You have no \
+other knowledge available for answering, and you must not add facts from memory, \
+even if you are confident they are correct.
+
+RULE 1 -- ANSWER THE QUESTION THAT WAS ASKED, IN PLAIN WORDS. Read the SOURCES, \
+pick out what bears on the question, and explain it in your own words the way a \
+kind, clear nurse would. Start with the answer itself -- never repeat the \
+question. Write for someone with no medical training: short sentences, \
+everyday words, and when a medical term is needed, explain it in \
+brackets the first time, e.g. "biopsy (removing a small piece of tissue to test \
+it)". Do not copy passages across; leave out what was not asked.
+
+RULE 2 -- THE CITATION RULE. Every sentence must end with its own source marker \
+in square brackets naming where that fact came from: [1], or [2][3]. Put the \
+marker on EACH sentence, not one pile of numbers at the end of a paragraph. A \
+sentence with no bracket is a failed answer and is discarded without being shown, \
+however correct it is. Never cite a number not in the SOURCES.
+
+Worked example. Given:
+
+    SOURCES
+    [1] NCCN · Fatigue and Cancer > What is cancer-related fatigue?
+    Cancer-related fatigue is an overwhelming sense of exhaustion related to
+    cancer or its treatment. It does not improve with normal amounts of rest
+    or sleep, and it disrupts daily life.
+    [2] NCCN · Fatigue and Cancer > During and after cancer treatment
+    Physical activity, such as walking, is one of the best ways to reduce
+    fatigue. Talk to your care team before starting an exercise program.
+
+    QUESTION
+    Why am I so tired, and what helps?
+
+A GOOD answer -- plain words, one marker per sentence, ends with the care team:
+
+    Many people with cancer feel a deep tiredness called cancer-related
+    fatigue, and it is caused by the cancer or its treatment [1]. Unlike normal
+    tiredness, it often does not get better with rest or sleep [1]. Gentle
+    physical activity, such as walking, is one of the best ways to ease it [2].
+    Ask your care team which kind of activity is safe for you before you start [2].
+
+A BAD answer -- repeats the question, and piles the markers at the end:
+
+    Why am I so tired? Cancer-related fatigue is exhaustion from cancer. It
+    does not improve with rest. Walking helps. [1][2]
+
+3. Patients often ask about themselves ("Will I...?", "How can I...?"). Those \
+are answerable: say what the SOURCES say about people in general. Only if the \
+SOURCES say nothing at all about the topic of the question, reply with exactly \
+this token and nothing else:
+{sentinel}
+Do not write a sentence saying the sources do not cover it -- emit the bare token.
+
+4. Describe options, what usually happens and what helps, as the guides do. \
+But never make the decision for the reader: do not tell them to start, stop, \
+skip or change their own treatment or medicine, or what dose to take. Make the \
+final sentence suggest what they could ask or tell their care team, with its \
+citation.
+
+5. Be warm and calm, never alarming. Do not guess anyone's chances of cure or \
+survival. Use short paragraphs or a few bullet points; every bullet ends with \
+its [n].
+
+6. LENGTH. Keep the whole answer under {max_words} words and finish your final \
+sentence. A simple question deserves a short answer."""
+
+
 DOMAIN_CORPUS = (
     "Between them the books cover the whole of clinical oncology -- every disease "
     "site, radiation physics, radiobiology and systemic therapy -- so any question "
@@ -123,6 +196,27 @@ two things: that no sentence is missing its bracket, and that what you wrote ans
 what was actually asked rather than summarising the passages."""
 
 
+# The clinician template's "if the SOURCES do not answer it" reads, to a 3B
+# model, as covering every "Will I...?" question -- the sources never mention
+# the reader. Measured: "Will I lose my hair during chemotherapy?" came back as
+# the bare token with the answer sitting in source [1]. So patients get a
+# template that reserves the token for a topic the sources do not touch.
+PATIENT_USER_TEMPLATE = """SOURCES
+{sources}
+
+QUESTION
+{question}
+
+Answer the QUESTION in plain, kind words using only the SOURCES above. If it \
+is asked about the reader ("Will I...?", "How can I...?"), answer with what the \
+SOURCES say about people in general. Reply with exactly {sentinel} and nothing \
+else ONLY if the SOURCES say nothing at all about this topic.
+
+EVERY sentence must end with its own source number in square brackets, like [1] \
+or [2][3]. Do not repeat the question. Before you finish, check that no \
+sentence is missing its bracket."""
+
+
 def format_sources(hits: list) -> str:
     """Render retrieved chunks as the numbered SOURCES block the prompt expects."""
     blocks = []
@@ -133,9 +227,18 @@ def format_sources(hits: list) -> str:
     return "\n\n".join(blocks)
 
 
-def build_prompt(question: str, hits: list) -> tuple[str, str]:
+def build_prompt(question: str, hits: list, audience: str = "clinician") -> tuple[str, str]:
     cfg = load_config()
     sentinel = cfg["guard"]["citation"]["sentinel"]
+    template = PATIENT_USER_TEMPLATE if audience == "patient" else USER_TEMPLATE
+    user = template.format(
+        sources=format_sources(hits), question=question.strip(), sentinel=sentinel
+    )
+    if audience == "patient":
+        from rag.config import load_patient_config
+
+        words = load_patient_config()["generation"]["max_answer_words"]
+        return PATIENT_SYSTEM_PROMPT.format(sentinel=sentinel, max_words=words), user
     scope = cfg["guard"]["topic"].get("scope", "tongue")
     domain = DOMAIN_CORPUS if scope == "corpus" else DOMAIN_TONGUE
     system = SYSTEM_PROMPT.format(
@@ -143,17 +246,14 @@ def build_prompt(question: str, hits: list) -> tuple[str, str]:
         domain=domain,
         max_words=cfg["llm"].get("max_answer_words", 500),
     )
-    user = USER_TEMPLATE.format(
-        sources=format_sources(hits), question=question.strip(), sentinel=sentinel
-    )
     return system, user
 
 
-def generate(question: str, hits: list, client=None) -> str:
+def generate(question: str, hits: list, client=None, audience: str = "clinician") -> str:
     from rag.llm import LLMClient
 
     client = client or LLMClient.from_config()
-    system, user = build_prompt(question, hits)
+    system, user = build_prompt(question, hits, audience)
     return client.chat(system, user)
 
 
@@ -175,7 +275,9 @@ anything. If the SOURCES do not actually support the content, reply with \
 exactly {sentinel} instead."""
 
 
-def build_repair_prompt(question: str, hits: list, draft: str) -> str:
+def build_repair_prompt(
+    question: str, hits: list, draft: str, audience: str = "clinician"
+) -> str:
     """Ask the model to add the citation markers it omitted.
 
     Layer 3 discards an uncited answer even when it is entirely correct and
@@ -189,7 +291,7 @@ def build_repair_prompt(question: str, hits: list, draft: str) -> str:
     # The SOURCES block must be repeated. Sending only the draft -- which is
     # the obvious way to write this -- asks the model to add source numbers it
     # can no longer see, and it cannot comply.
-    _, original = build_prompt(question, hits)
+    _, original = build_prompt(question, hits, audience)
     return REPAIR_TEMPLATE.format(
         original=original, draft=draft.strip(), sentinel=sentinel
     )

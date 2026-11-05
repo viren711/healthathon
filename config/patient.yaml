@@ -1,0 +1,183 @@
+# Patient Portal configuration. Read by scripts/07_build_patient_corpus.py,
+# scripts/08_eval_patient.py, rag/ (when called with corpus="patient") and
+# app/views/patient_portal.py.
+#
+# Everything not set here -- embedding model, reranker, retrieval pool sizes,
+# LLM endpoint -- is shared with the Knowledge Assistant and comes from
+# config/rag.yaml. The patient index is built with the SAME embedder, so the
+# two retrievers share one loaded embedder and one cross-encoder in memory.
+
+paths:
+  guides: "config/patient_guides.yaml"
+  corpus_dir: "corpus/patient"
+  sections_file: "corpus/patient/sections.jsonl"
+  chunks_file: "corpus/patient/chunks.jsonl"
+  library_file: "corpus/patient/library.json"
+  index_dir: "artifacts/index_patient"
+
+chunking:
+  # Patient guides are written in short paragraphs and bullet lists, and a
+  # section ("What is staging?") is usually under a page. Smaller chunks than
+  # the textbooks keep one chunk to one idea, which is what a lay question
+  # needs; the overlap carries a list's lead-in sentence into its bullets.
+  max_tokens: 350
+  overlap_tokens: 60
+  min_tokens: 30
+  table_max_tokens: 900
+
+guard:
+  topic:
+    # Same "corpus" junk-filter mode as the Knowledge Assistant: refuse only a
+    # query that looks unlike a health question on BOTH signals, and let the
+    # grounding gate decide everything else on evidence.
+    #
+    # Measured on this index (bge-base): off-topic questions reach seed 0.408
+    # and centroid 0.498 -- the patient corpus is plain everyday prose, so its
+    # centroid sits closer to general text than the textbooks' does. Plain
+    # patient questions with no medical word in them ("Will I lose my hair?")
+    # start at seed 0.453, the labelled answerable set at 0.504. Seed is the
+    # separating signal; the centroid bar is set above every off-topic value.
+    junk_max_seed: 0.43
+    junk_max_centroid: 0.55
+  grounding:
+    # Cross-encoder logit on the same scale as config/rag.yaml. Calibrated by
+    # scripts/08_eval_patient.py --apply against eval/patient_questions.yaml.
+    min_rerank_score: 0.3
+    min_dense_similarity: 0.55
+    min_supporting_chunks: 1
+
+generation:
+  # Patient answers are shorter than clinician answers: a patient reads the
+  # whole thing, and a long answer buries the part they asked about.
+  max_answer_words: 300
+  # When the model says "not available" although the best passage scored at
+  # least this high (the gate itself is 0.3), ask it once more, pointing at
+  # that passage. Measured: "Will I lose my hair during chemotherapy?" got the
+  # bare token every time with a direct answer in source [1] at 8.3. The
+  # retried answer goes through the same citation check; 0 disables.
+  sentinel_retry_min_score: 4.0
+  # When the model still cannot give a checked answer (abstains, drops its
+  # citations, times out) but the best passage scores at least this, show the
+  # top passages verbatim instead of "not available". Measured: answerable
+  # questions' best passage scores 6.0+, not-covered questions' -9.7 to -2.2,
+  # so 2.0 keeps a question the guides barely touch in "not available" while
+  # catching everyday wording that retrieves a little weakly ("Can I exercise
+  # during chemotherapy?" 2.7).
+  excerpt_min_score: 2.0
+  excerpt_count: 2
+
+# Everyday words -> the terms the guides use. When a question matches, the
+# terms are appended to the text used for SEARCHING (never shown, and not given
+# to the model, which still sees the patient's own words). Measured, best
+# passage before -> after: "Why am I so tired all the time?" -2.66 -> 6.39
+# (now the Fatigue guide); "Can I exercise during chemotherapy?" 0.69 -> 2.70;
+# "How do I know if my cancer has spread?" 4.08 -> 5.25. Kept short on purpose:
+# an entry is only worth adding when it was measured to help.
+query_expansions:
+  - match: "\\b(tired|tiredness|exhausted|exhaustion|no energy|worn out)\\b"
+    add: "cancer-related fatigue"
+  - match: "\\b(exercis\\w*|work ?outs?|yoga|gym)\\b"
+    add: "physical activity exercise"
+  - match: "\\bspread(s|ing)?\\b"
+    add: "metastasis staging tests"
+  - match: "\\b(throw(ing)? up|queasy|sick to my stomach)\\b"
+    add: "nausea vomiting"
+  - match: "\\b(anxi\\w+|depress\\w*|scared|afraid|worried|overwhelmed)\\b"
+    add: "distress emotional concerns"
+
+# Patient-phrased canonical questions for the topic gate's seed similarity.
+seed_questions:
+  - What are the signs of mouth cancer?
+  - How is breast cancer treated?
+  - What side effects does chemotherapy cause?
+  - How can I cope with distress during treatment?
+  - What should I ask my doctor about my treatment?
+  - How do I prepare for radiation therapy?
+  - What is a biopsy?
+  - What is cancer staging?
+  - How can I manage fatigue during cancer treatment?
+  - Should I get screened for colorectal cancer?
+  - What is palliative care?
+  - How can I lower my risk of getting cancer?
+  - What happens after treatment ends?
+  - What is immunotherapy and what are its side effects?
+  - How do I care for someone who has cancer?
+  - What is genetic testing for cancer risk?
+  - How can I stop nausea from chemotherapy?
+  - Can I still have children after cancer treatment?
+  - What is a clinical trial?
+  - What is a blood clot and why does cancer raise the risk?
+
+messages:
+  not_available: >-
+    I couldn't find an answer to that in the NCCN Guidelines for Patients.
+    Your care team is the best place to ask, and they can explain how it
+    applies to you.
+  excerpts: >-
+    I couldn't put this into a short answer, but these passages from the NCCN
+    Guidelines for Patients cover it. Your care team can explain how they apply
+    to you.
+  out_of_scope: >-
+    I can only answer questions about cancer -- detection, prevention,
+    treatment, side effects, and living with cancer -- using the NCCN
+    Guidelines for Patients.
+  disclaimer: >-
+    Educational information from the NCCN Guidelines for Patients. It is not
+    medical advice for you personally -- always talk with your care team
+    about your own situation.
+
+# Checked before retrieval, without the language model. Patterns are
+# case-insensitive regular expressions matched on word boundaries.
+safety:
+  crisis:
+    patterns:
+      - "suicid\\w*"
+      - "kill(ing)? (myself|me)"
+      - "end(ing)? (it all|my life)"
+      - "take my (own )?life"
+      - "(want|wanting|wish) to die"
+      - "don'?t want to (live|be alive|wake up)"
+      - "self[- ]?harm"
+      - "hurt(ing)? myself"
+      - "no reason to live"
+    message: >-
+      I'm really sorry you're going through this. You don't have to face it
+      alone. If you are thinking about ending your life or hurting yourself,
+      please reach out right now: in India, call Tele-MANAS on 14416 or
+      1-800-891-4416 (free, 24 hours), or call 112 in an emergency. Outside
+      India, call your local emergency number. Please also tell your care
+      team how you are feeling -- distress is common during cancer care, and
+      they can help.
+    guide: distress
+  emergency:
+    patterns:
+      - "(can'?t|cannot|unable to|trouble|difficulty|hard to) breath\\w*"
+      - "short(ness)? of breath"
+      - "chest pain"
+      - "cough(ing)? (up )?blood"
+      - "vomit(ing)? blood"
+      - "(heavy|severe|uncontrolled|won'?t stop) bleeding"
+      - "(fever|temperature) (of|over|above|during|while|after|with)"
+      - "i have a (high )?fever"
+      - "(passed out|fainted|unconscious|seizure)"
+      - "(sudden|severe) (headache|confusion|weakness)"
+      - "(face|arm|leg) (is |suddenly )?(swollen|numb)"
+      - "can'?t (move|feel) my"
+    message: >-
+      Some of what you describe can be a medical emergency for someone with
+      cancer. Please contact your care team now, or call your local emergency
+      number (112 in India) or go to the nearest emergency department. A fever
+      during chemotherapy, trouble breathing, chest pain or heavy bleeding
+      should never wait.
+  personal_decision:
+    patterns:
+      # ...but not "should I quit smoking?", which is advice the guides give.
+      - "should i (stop|skip|quit|change|refuse|delay|start)\\b(?!\\s+(smoking|tobacco|vaping|drinking|alcohol))"
+      - "(can|may) i (stop|skip|quit)\\b(?!\\s+(smoking|tobacco|vaping|drinking|alcohol))"
+      - "how (much|many) .{0,30}(should|can) i take"
+      - "what dose"
+      - "(increase|decrease|double) my (dose|medicine|medication)"
+    message: >-
+      I can share what the NCCN guides say in general, but whether to start,
+      stop or change your own treatment is a decision to make with your care
+      team, who know your full situation.

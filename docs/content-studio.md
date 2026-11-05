@@ -5,7 +5,7 @@ a few questions, and gets a draft to review, edit and publish. Like the
 Knowledge Assistant, it runs entirely on this machine.
 
 It is deliberately **not** grounded in the textbooks. The Knowledge Assistant
-answers only from *DeVita* and *Gunderson & Tepper* and cites every fact; the
+answers only from the indexed textbooks (*DeVita*, *Gunderson & Tepper*, *MD Anderson Surgical Oncology Handbook*, *Oncologic Imaging*) and cites every fact; the
 studio writes from the model's general knowledge and cannot cite anything. The
 page says so above every draft, and the prompt forbids the things that would
 disguise it (see [Keeping drafts honest](#keeping-drafts-honest)).

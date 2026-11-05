@@ -1,0 +1,40 @@
+STARTUP AFTER A MACHINE RESTART
+===============================
+
+Public URL (stays the same across restarts):
+    https://v.taila0f4fa.ts.net/
+
+The URL only changes if the machine or tailnet is renamed, or the device is
+removed from Tailscale and re-added.
+
+
+1. Start the app in a tmux session
+----------------------------------
+    tmux new-session -d -s health-host -c ~/Documents/healthathon './start --http'
+
+Wait ~1 minute for the model server and UI to come up, then check:
+    curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8501     # expect 200
+
+View the app output any time:
+    tmux attach -t health-host        # detach with Ctrl+b then d
+
+(--http is required: Funnel provides the HTTPS, so the app must serve plain
+http locally. Voice input works because the public URL is real HTTPS.)
+
+
+2. Check Tailscale and Funnel
+-----------------------------
+Tailscale and the Funnel config are saved and normally come back on their own.
+Verify:
+    tailscale status
+    tailscale funnel status           # should show https://v.taila0f4fa.ts.net (Funnel on)
+
+If Funnel status says "No serve config", or tailscaled is not running:
+    sudo systemctl enable --now tailscaled
+    tailscale funnel --bg 8501
+
+
+Stop / disable
+--------------
+Stop the app:           cd ~/Documents/healthathon && ./stop
+Stop public sharing:    tailscale funnel --https=443 off

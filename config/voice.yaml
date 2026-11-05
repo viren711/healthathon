@@ -1,0 +1,112 @@
+# Voice input, translation and read-aloud (Sarvam AI). Read by rag/sarvam.py
+# and app/voice_ui.py. The key is SARVAM_API_KEY in .env; without it both
+# pages work exactly as before, typed and English only.
+#
+# Prices (docs.sarvam.ai, read 2026-11-01), used for the usage log:
+#   speech to text  saaras:v4            Rs0.49 / minute
+#   translate       either model         Rs2 / 1,000 characters
+#   text to speech  bulbul:v4-flash      Rs1 / 1,000 characters (bulbul:v3: Rs3)
+#   language id     text-lid             Rs0.35 / 1,000 characters
+
+models:
+  stt: "saaras:v4"
+  tts: "bulbul:v4-flash"
+  # bulbul:v4-flash rejects the v3 speaker names ("shubh" -> 400) and the plain
+  # "ishita"; it takes its own named voices (224 of them). ishita_enhi_companion
+  # is an English+Hindi conversational voice and reads all 11 languages
+  # (tested in Hindi and Tamil). v4-flash is also the cheapest model (Rs1/1K).
+  # Reading voice by audience. roopa_hi_companion is used for both (it reads
+  # all 11 languages; tested in Hindi, Tamil, Bengali and English). Set
+  # "clinician" to another v4-flash voice, e.g. ishita_enhi_companion, to give
+  # doctors a different one.
+  tts_speakers:
+    patient: "roopa_hi_companion"
+    clinician: "roopa_hi_companion"
+  tts_fallback_model: "bulbul:v3"
+  tts_fallback_speaker: "shubh"
+
+translate:
+  # Patients: sarvam-translate:v1 writes plain native-script text and kept
+  # every citation marker in place (Hindi, Tamil). mayura:v1, even in
+  # "modern-colloquial" mode, wrote mostly English words in Devanagari
+  # glue ("Chemotherapy se fatigue, nausea aur hair loss...") -- unreadable
+  # for a patient who does not read English -- and moved a marker.
+  patient: {model: "sarvam-translate:v1", mode: null}
+  # Doctors: mayura:v1 "code-mixed" keeps drug names, doses and staging terms
+  # in English inside Hindi sentences, which is how clinicians speak.
+  # sarvam-translate:v1 has no code-mixed mode (400).
+  clinician: {model: "mayura:v1", mode: "code-mixed"}
+  # Buttons, labels and captions of the Patient Portal, shown in English with
+  # the chosen language beneath. Same model as "patient", so the saved
+  # translations are shared; each string is translated once, ever.
+  ui: {model: "sarvam-translate:v1", mode: null}
+  # Questions into English, for retrieval.
+  to_english: {model: "sarvam-translate:v1", mode: null}
+
+languages:
+  # code: [English name, native name]. All 11 have their own TTS voice.
+  en-IN: [English, English]
+  hi-IN: [Hindi, हिन्दी]
+  bn-IN: [Bengali, বাংলা]
+  gu-IN: [Gujarati, ગુજરાતી]
+  kn-IN: [Kannada, ಕನ್ನಡ]
+  ml-IN: [Malayalam, മലയാളം]
+  mr-IN: [Marathi, मराठी]
+  od-IN: [Odia, ଓଡ଼ିଆ]
+  pa-IN: [Punjabi, ਪੰਜਾਬੀ]
+  ta-IN: [Tamil, தமிழ்]
+  te-IN: [Telugu, తెలుగు]
+
+# The line that cycles above the Patient Portal's language picker. Fixed
+# text, so showing it never calls Sarvam.
+choose_language:
+  en-IN: "Choose your language"
+  hi-IN: "अपनी भाषा चुनें"
+  bn-IN: "আপনার ভাষা বেছে নিন"
+  gu-IN: "તમારી ભાષા પસંદ કરો"
+  kn-IN: "ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ"
+  ml-IN: "നിങ്ങളുടെ ഭാഷ തിരഞ്ഞെടുക്കുക"
+  mr-IN: "तुमची भाषा निवडा"
+  od-IN: "ଆପଣଙ୍କ ଭାଷା ବାଛନ୍ତୁ"
+  pa-IN: "ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ"
+  ta-IN: "உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்"
+  te-IN: "మీ భాషను ఎంచుకోండి"
+
+patient_languages: [en-IN, hi-IN, bn-IN, gu-IN, kn-IN, ml-IN, mr-IN, od-IN, pa-IN, ta-IN, te-IN]
+clinician_languages: [en-IN, hi-IN]
+
+limits:
+  # Characters per translate request (the API takes up to 2,000 for
+  # sarvam-translate:v1 and 1,000 for mayura:v1).
+  translate_chunk_chars: 900
+  # bulbul accepts up to 2,500 characters per request.
+  tts_chunk_chars: 2000
+  # Longest text read aloud in one go; a 300-word patient answer is ~1,800.
+  tts_max_chars: 4000
+  # Shortest recording worth sending (bytes of 16 kHz WAV, ~0.3 s).
+  min_audio_bytes: 10000
+  # Longest recording, in seconds, to save credits (speech to text is billed per
+  # second). The page counts down and sends the recording at this point; the
+  # server also refuses anything longer, in case the page's own stop fails.
+  max_record_seconds: 30
+  parallel_requests: 4
+  # Estimated rupees per calendar day across the whole app. Once reached,
+  # Sarvam calls are refused with a readable message until midnight; cached
+  # results still work. 0 disables the cap.
+  daily_budget_inr: 500
+  # Optional schedule: from each date on (inclusive) the cap becomes this
+  # instead, e.g.  "2026-12-01": 1000. Empty keeps the cap above for good.
+  daily_budget_from: {}
+
+paths:
+  cache_dir: "artifacts/voice_cache"
+  usage_log: "logs/sarvam_usage.jsonl"
+  # Rewritten after every billable call: total spend, spend per API, and
+  # every transaction. Open it any time to see the stats.
+  usage_report: "sarvam_api_usage.txt"
+
+prices_inr:
+  stt_per_minute: 0.49
+  translate_per_1k_chars: 2.0
+  tts_per_1k_chars: {"bulbul:v4-flash": 1.0, "bulbul:v3": 3.0}
+  lid_per_1k_chars: 0.35

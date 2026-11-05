@@ -1,6 +1,6 @@
 # Design: how the platform stays honest
 
-The whole product rests on one promise -- it answers only from the two books,
+The whole product rests on one promise -- it answers only from the indexed books,
 cites what it used, and says so when it cannot. This is how that is enforced,
 and what had to change as the corpus widened from one disease to two whole
 textbooks.

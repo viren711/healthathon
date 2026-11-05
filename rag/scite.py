@@ -10,11 +10,17 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from rag import keyring
 from rag.config import _load_dotenv
 
 
 class SciteError(RuntimeError):
     """Raised when the Scite API cannot answer a request."""
+
+    def __init__(self, message: str, status: int | None = None, body: object = "") -> None:
+        super().__init__(message)
+        self.status = status
+        self.body = body
 
 
 @dataclass(frozen=True)
@@ -39,18 +45,38 @@ class SciteClient:
 
     @classmethod
     def from_env(cls) -> "SciteClient | None":
-        _load_dotenv()
-        api_key = os.environ.get("SCITE_API_KEY", "").strip()
-        if not api_key:
+        # SCITE_API_KEY, then extra_scite_api when the first is out of quota
+        # (see rag/keyring.py). `api_key` is the one in use right now.
+        keys = keyring.usable("scite") or keyring.configured("scite")
+        if not keys:
             return None
         return cls(
-            api_key=api_key,
+            api_key=keys[0][1],
             base_url=os.environ.get("SCITE_API_BASE_URL", "https://api.scite.ai"),
             timeout=float(os.environ.get("SCITE_TIMEOUT_SECONDS", "120")),
             poll_interval=float(os.environ.get("SCITE_POLL_INTERVAL_SECONDS", "1")),
         )
 
-    def ask(
+    def ask(self, question: str, history: list[dict[str, Any]] | None = None, **kw: Any) -> SciteAnswer:
+        """Ask with the first key that still has quota; a key refused for quota
+        or access is remembered and skipped (rag/keyring.py), then the next."""
+        last: SciteError | None = None
+        for name, key in keyring.usable("scite"):
+            self.api_key = key
+            try:
+                return self._ask(question, history, **kw)
+            except SciteError as exc:
+                if keyring.exhausted("scite", exc.status, exc.body):
+                    keyring.mark_exhausted("scite", name, key, exc.status)
+                    last = exc
+                    continue
+                raise
+        if last is not None:
+            raise last
+        raise SciteError("Every Scite Assistant key has reached its limit for now "
+                         "(delete artifacts/key_state.json to retry).", 429)
+
+    def _ask(
         self,
         question: str,
         history: list[dict[str, Any]] | None = None,
@@ -118,7 +144,8 @@ class SciteClient:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 body = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
-            raise SciteError(f"Scite API returned HTTP {exc.code}: {exc.read()[:400]!r}") from exc
+            detail = exc.read()[:400]
+            raise SciteError(f"Scite API returned HTTP {exc.code}: {detail!r}", exc.code, detail) from exc
         except (urllib.error.URLError, TimeoutError) as exc:
             raise SciteError(f"Cannot reach Scite at {self.base_url}: {exc}") from exc
         if not isinstance(body, dict):
@@ -146,17 +173,34 @@ class SciteMCPClient:
 
     @classmethod
     def from_env(cls) -> "SciteMCPClient | None":
-        _load_dotenv()
-        api_key = os.environ.get("SCITE_MCP_API_KEY", "").strip()
-        if not api_key:
+        keys = keyring.usable("scite_mcp") or keyring.configured("scite_mcp")
+        if not keys:
             return None
         return cls(
-            api_key=api_key,
+            api_key=keys[0][1],
             base_url=os.environ.get("SCITE_MCP_BASE_URL", "https://api.scite.ai"),
             timeout=float(os.environ.get("SCITE_TIMEOUT_SECONDS", "120")),
         )
 
     def search(self, question: str, limit: int = 10) -> SciteAnswer:
+        """First key that still has quota (see rag/keyring.py), then the next."""
+        last: SciteError | None = None
+        for name, key in keyring.usable("scite_mcp"):
+            self.api_key = key
+            try:
+                return self._search(question, limit)
+            except SciteError as exc:
+                if keyring.exhausted("scite_mcp", exc.status, exc.body):
+                    keyring.mark_exhausted("scite_mcp", name, key, exc.status)
+                    last = exc
+                    continue
+                raise
+        if last is not None:
+            raise last
+        raise SciteError("Every Scite search key has reached its limit for now "
+                         "(delete artifacts/key_state.json to retry).", 429)
+
+    def _search(self, question: str, limit: int = 10) -> SciteAnswer:
         body = self._request(
             {
                 "jsonrpc": "2.0",
@@ -197,7 +241,8 @@ class SciteMCPClient:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 body = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
-            raise SciteError(f"Scite MCP returned HTTP {exc.code}: {exc.read()[:400]!r}") from exc
+            detail = exc.read()[:400]
+            raise SciteError(f"Scite MCP returned HTTP {exc.code}: {detail!r}", exc.code, detail) from exc
         except (urllib.error.URLError, TimeoutError) as exc:
             raise SciteError(f"Cannot reach Scite MCP at {self.base_url}: {exc}") from exc
         if not isinstance(body, dict):

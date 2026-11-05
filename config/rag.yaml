@@ -90,7 +90,7 @@ guard:
   # --- Layer 1: topic gate (pre-retrieval) -------------------------------
   topic:
     # What the platform is willing to answer AT ALL.
-    #   corpus -- anything the two textbooks cover: every disease site,
+    #   corpus -- anything the indexed textbooks cover: every disease site,
     #             radiation physics, radiobiology, systemic therapy. Naming a
     #             site like "prostate" is then evidence the question is IN
     #             scope, because the books have a chapter on it.
@@ -119,7 +119,7 @@ guard:
     min_seed_similarity: 0.54
 
     # --- scope "corpus" only -------------------------------------------
-    # Over the whole of both books, layer 1 is only a junk filter: a query is
+    # Over the whole of the books, layer 1 is only a junk filter: a query is
     # refused here ONLY if it looks unlike a medical question on BOTH signals.
     # Everything else goes to retrieval and the grounding gate decides on
     # evidence, which is the honest test and does not depend on phrasing.

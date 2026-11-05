@@ -1,0 +1,435 @@
+DOCTOR KNOWLEDGE & PRODUCTIVITY ASSISTANT
+=========================================
+
+A portal of six tools for oncology: cited answers from textbooks, treatment
+recommendations from clinical guidelines, article drafting, literature search,
+and a patient-facing assistant that speaks eleven Indian languages. It runs on
+one ordinary computer with no GPU. Nothing is made up: every clinical statement
+is quoted from, or cited to, a named source, and when the sources do not cover a
+question the tool says so.
+
+CONTENTS
+--------
+  1.  The problem
+  2.  The solution at a glance
+  3.  The tools, one by one
+  4.  Voice and Indian languages
+  5.  Look and feel
+  6.  How answers are kept honest
+  7.  Privacy: what stays on the computer and what leaves it
+  8.  What it costs to run
+  9.  Results
+  10. Tech stack
+  11. Setup and operation
+  12. Sharing it with other people
+  13. Limits, stated plainly
+  14. Future scope
+
+
+1. THE PROBLEM
+--------------
+Doctors lose time every day to jobs that sit around clinical care:
+
+  - Looking things up. The answer is usually in a trusted textbook or guideline,
+    but finding the right page in a 4,000-page book is slow. General chatbots
+    are fast but may invent facts or cite sources that do not exist, which is
+    unacceptable in medicine.
+  - Deciding between options. Clinical guidelines hold the recommendation for a
+    given case, but a lung cancer guideline alone has dozens of
+    recommendations that depend on biomarkers, prior drugs and setting.
+  - Writing. Patient-education blogs, handouts and articles for colleagues are
+    valuable but take hours to draft.
+  - Keeping up with research. Checking what the published literature says about a
+    clinical question means searching papers and reading abstracts.
+
+Patients and families have a different problem: reliable cancer information
+exists (the NCCN Guidelines for Patients) but it is long, in English, and hard to
+navigate, and general chatbots give confident answers with no source. Most
+patients in India are more comfortable in their own language than in English,
+and many prefer to speak rather than type.
+
+Patient and clinical information is also sensitive, so doctors hesitate to paste
+it into online AI services.
+
+
+2. THE SOLUTION AT A GLANCE
+---------------------------
+One portal, six tools, opened from a home page. Four of the six work entirely on
+the doctor's own computer. The language model is an open-weight Qwen model run on
+the CPU, and it is NOT fine-tuned or trained on anything: all medical knowledge
+comes from the indexed sources, and the model only writes the answer from the
+passages it is handed.
+
+  Home                 a launcher plus a short clickable card per tool
+  Knowledge Assistant  cited answers from four oncology textbooks
+  Content Studio       drafts articles and handouts from a short brief
+  Research Platform    evidence from the published literature (online, Scite)
+  Treatment Guidance   a case in, the matching ASCO recommendations out; falls
+                       back to the textbooks when the guidelines have nothing
+  Patient Portal       answers and reading material for patients, by voice or
+                       text, in 11 languages
+
+
+3. THE TOOLS, ONE BY ONE
+------------------------
+
+3.1  Home
+   - A single launcher box: pick what you want to do (ask the textbooks, draft an
+     article, search the literature, find treatment guidance, answer a patient
+     question), type or tap an example, and land in that tool with the task
+     already under way: the question already asked, the topic already filled in,
+     or the case already read.
+   - A short card per tool saying what it does and whether it runs on this
+     computer or online. The whole card is the link into the tool.
+   - Live status badges: whether the model server is up, which model is in
+     memory, the size of the textbook and patient-guide indexes, the number of
+     ASCO guidelines loaded, whether Scite and voice are configured.
+   - The whole page fits on one screen of an ordinary laptop.
+
+3.2  Knowledge Assistant: cited answers from oncology textbooks
+   - Ask a question in plain English and get an answer drawn only from four
+     standard oncology references: DeVita's Cancer (11th ed.), Gunderson &
+     Tepper's Clinical Radiation Oncology, the MD Anderson Surgical Oncology
+     Handbook and Oncologic Imaging: A Multidisciplinary Approach (8,685 pages,
+     19,949 searchable passages).
+   - Every sentence is cited to book, chapter and page, and the actual page opens
+     in one click so the doctor can verify it.
+   - When the books do not answer the question, it says "not available in the
+     sources" instead of guessing (see section 6).
+   - "Find" mode lists every place a topic is discussed, page by page, in about
+     a second, with no language model involved, so it cannot invent a reference.
+   - Can be narrowed to 14 organ systems and 78 pathologies, for example
+     Head & Neck -> Oral cavity & tongue. The selectors sit above the question box.
+   - Doctors can speak or type in English or Hindi. Hindi answers keep drug names,
+     doses and staging terms in English, the way clinicians speak.
+
+3.3  Content Studio: article drafting
+   - The doctor enters a topic and a short description of the piece. The studio
+     asks a few questions (audience, tone, length, what to include or avoid, plus
+     three written for that specific topic), then drafts the article.
+   - Patient blogs, handouts, articles for clinicians and newsletters, in short,
+     medium or long versions. Downloads as Markdown.
+   - It is deliberately NOT grounded in the textbooks and cannot cite anything;
+     the page says so above every draft. The model is told not to invent
+     statistics or references, drafts are never cut off mid-sentence, and every
+     draft is marked for the doctor's review.
+
+3.4  Research Platform: evidence from the published literature
+   - Research questions go to Scite (scite.ai), which returns relevant published
+     papers with abstracts and supporting excerpts.
+   - A local model summarises the evidence, citing each paper as [n], with
+     authors, journal, year and DOI shown for each source.
+   - Two Scite routes: the Assistant API (written answer plus references) and,
+     when that key is out of quota, Scite's literature search (papers only). A
+     spare Scite key can be added and is used automatically.
+   - This is the only clinical tool that sends the question text off the computer,
+     and the page says so.
+
+3.5  Treatment Guidance: a clinical case in, the matching ASCO recommendations out
+   - Built on 19 ASCO clinical practice guidelines: lung (with and without driver
+     alterations), breast, ovarian, myeloma, melanoma, thyroid,
+     gastroesophageal, biliary, prostate, glioma, neuroendocrine, and
+     cross-cutting guidance on ctDNA testing, growth factors, cancer in pregnancy
+     and communication. 443 recommendations in all. The page lists the covered
+     cancers so a doctor knows at once whether theirs is covered.
+   - Start with a text box: type or paste the case and the question (or tap one
+     of six checked examples), or simply tap the cancer. Rules read the cancer,
+     setting, biomarkers, PD-L1, histology and prior drugs from the text and fill
+     in the questions, which the doctor can change.
+   - Then two or three optional questions, chosen from what that cancer's
+     recommendations depend on. The best three recommendations appear at once and
+     re-rank after every answer, with a bar showing how well each fits.
+   - Each recommendation is shown word for word with its strength, evidence
+     quality, guideline version, the reasons it matched, the trial statistics the
+     guideline prints (figures in bold) and the PDF page. Contradictions exclude
+     a recommendation (a HER2-negative regimen for a HER2-positive case).
+     Nothing on the page is generated by a model.
+   - When the guidelines have nothing (the text names a cancer none of the 19
+     cover, or no recommendation matches), the page asks the oncology textbooks
+     the same question through the Knowledge Assistant's pipeline. The answer
+     appears under "From the textbooks" with a clear notice that it is NOT from
+     the ASCO guidelines and where it does come from, its sources listed by book,
+     chapter and page, and a button that opens the question in the Knowledge
+     Assistant. If the textbooks do not cover it either, it says so.
+
+3.6  Patient Portal: answers and reading material for patients and families
+   - Built only on the 76 NCCN Guidelines for Patients: detection, prevention and
+     risk reduction, treatment by cancer type, supportive care (distress, fatigue,
+     nausea, palliative care, survivorship) and specific groups (young adults,
+     older adults, caregivers). It uses a separate index from the textbooks, so a
+     patient answer can never cite a textbook.
+   - Ask: a question in everyday words ("I feel so tired") gets a plain-language
+     answer from the guides, every sentence cited, with the guide page one click
+     away. Everyday words are matched to the guides' terms for searching. It can
+     be narrowed to one topic area or one guide. When the small model cannot
+     produce a checked answer but retrieval found strong evidence, the guides'
+     own top passages are shown, cited, instead of "not available".
+   - Learn: each guide's own common questions, key points, questions to ask your
+     doctor (downloadable as a checklist) and glossary, unchanged from NCCN, plus
+     a search across all guides. No AI-written text, no model. A search or
+     glossary lookup typed in another language is translated to English first, so
+     it finds results.
+   - Safety first, before any retrieval: crisis language gets a helpline message
+     instead of an answer; urgent symptoms get a "contact your care team now"
+     notice above the answer; "should I stop my treatment?" is answered in
+     general terms with the decision left to the care team. The tool never tells
+     a patient to start, stop or change a treatment. This works in every
+     language: a crisis message written in Hindi is caught and answered with the
+     helpline, in Hindi.
+
+
+4. VOICE AND INDIAN LANGUAGES  (Patient Portal and Knowledge Assistant)
+-----------------------------------------------------------------------
+   - Speak or type the question. Patients can use any of 11 languages (English,
+     Hindi, Bengali, Gujarati, Kannada, Malayalam, Marathi, Odia, Punjabi, Tamil,
+     Telugu), picked at the top of the page, where a line saying "Choose your
+     language" cycles through all 11 in their own scripts, or detected
+     automatically. Doctors can use English or Hindi.
+   - Both start in English, which needs no outside service. Typed English never
+     calls Sarvam.
+   - The question is translated to English and goes through the unchanged
+     pipeline (safety screen, retrieval, the three refusal layers, the citation
+     check). Only the already-checked English answer is translated back, so every
+     sentence keeps its source reference in every language.
+   - The answer comes back in the user's language, followed by the English. A
+     Listen button reads either aloud, on request only. The Patient Portal's
+     buttons and labels show English with the chosen language beneath; in
+     English they show English only.
+   - Recording: a red glow, pulsing dot and moving bars show when the microphone
+     is recording, and "Recording sent" or "Recording cancelled" shows when it
+     ends. A recording is capped at 30 seconds to save credits: the page sends it
+     at the limit, and the server refuses anything longer without calling the
+     service.
+   - Built on Sarvam AI: speech to text (saaras:v4), translation
+     (sarvam-translate:v1 for patients; mayura:v1 code-mixed for doctors),
+     language identification, and speech output (bulbul:v4-flash, one voice for
+     everyone, which reads all 11 languages).
+   - Several Sarvam keys can be configured. They are tried in a fixed order, and
+     a key that runs out of credit is skipped from then on, across restarts.
+
+
+5. LOOK AND FEEL
+----------------
+   - Light by default, whatever the computer prefers. A sun/moon button at the top
+     right switches to dark and remembers the choice.
+   - A slow aurora of teal, cyan and indigo behind frosted-glass cards and a
+     frosted top bar, gradient headings and a glowing gradient button for the
+     main action. Motion is slow and switches off for people who ask for reduced
+     motion. Text keeps at least 4.5:1 contrast, and every control shows a visible
+     focus ring.
+   - Each tool on the home page has its own colour. The Patient Portal is lighter
+     and warmer (mint, sky and a touch of peach), because it is for patients.
+   - Works on a phone and a tablet (checked at 390 px and 820 px wide on every
+     page): nothing scrolls sideways, and the tools' cards stack. On a phone the
+     navigation bar folds into a menu button, as Streamlit does by default.
+   - No external fonts or images are loaded, so the look sends nothing anywhere.
+
+
+6. HOW ANSWERS ARE KEPT HONEST
+------------------------------
+"Say when you don't know" cannot rest on a prompt, so for the textbook-based tools
+it is enforced at three independent points, any of which can refuse:
+
+   1. A topic check: is this a question these sources could answer? Cheap, no
+      model call.
+   2. An evidence check before generation: did anything retrieved actually clear
+      the bar? It refuses before a model call is spent.
+   3. A citation check afterwards: every sentence must cite a supplied source. An
+      uncited or unverifiable answer is thrown away and the user sees the
+      refusal, whatever the model wrote.
+
+Retrieval is hybrid (FAISS vectors plus BM25 keywords, merged by reciprocal rank
+fusion, then reranked by a cross-encoder). The model is told to write only from the
+numbered passages. In Treatment Guidance nothing is generated at all: the
+recommendation text is the guideline's own, checked word for word against its PDF.
+
+What the citation check does NOT do: it confirms that a citation exists and points
+at a supplied source, not that it is the right one. What carries the weight is the
+evidence check plus the fact that the cited page is one click away.
+
+
+7. PRIVACY: WHAT STAYS ON THE COMPUTER AND WHAT LEAVES IT
+---------------------------------------------------------
+   Stays on the computer
+     - The textbooks, the NCCN and ASCO guides, the indexes, and the language
+       models. Retrieval, answering, ranking and drafting all run locally.
+     - Knowledge Assistant in English, Content Studio, Treatment Guidance and the
+       Patient Portal in English: nothing is sent anywhere.
+   Leaves the computer
+     - Research Platform: the question and the conversation, to scite.ai.
+     - Voice and languages: a recording, or text in a language other than English,
+       or English text that is being translated or read aloud, to Sarvam AI. A
+       typed English question in English mode never leaves.
+   Kept out of the repository
+     - The source PDFs and the text extracted from them (copyrighted), the
+       indexes, model weights, API keys and logs are all gitignored.
+
+
+8. WHAT IT COSTS TO RUN
+-----------------------
+   - The clinical tools need no paid service. The only running costs are Scite
+     (a plan with a monthly search limit) and Sarvam (pay per use, in rupees).
+   - Sarvam prices used for the estimates: speech to text Rs 0.49 per minute,
+     translation Rs 2 per 1,000 characters, speech output Rs 1 per 1,000
+     characters, language identification Rs 0.35 per 1,000 characters.
+   - Ways the credit use is kept low:
+       every translation and audio clip is saved to disk and reused for everyone;
+       the fixed messages (for example "I couldn't find an answer in the NCCN
+       Guidelines") are translated and voiced once per language, then free;
+       nothing is read aloud unless the Listen button is pressed;
+       language is read from the script, so most typed questions need no
+       language-identification call;
+       a recording is capped at 30 seconds;
+       a daily spending cap (Rs 500) refuses further calls until midnight, while
+       cached results and English keep working;
+       tests run against an offline stand-in and spend nothing.
+   - A file, sarvam_api_usage.txt, is rewritten after every call with the total
+     spent, the amount per service, and every transaction in detail (which key,
+     what text, how many characters or seconds, what it cost). Spend is not shown
+     in the web app.
+
+
+9. RESULTS  (measured on a 6-core AMD Ryzen 5 5600G with no GPU)
+-----------------------------------------------------------------
+   - Textbook retrieval found the right passages for 96% of labelled test
+     questions (Recall@5), and the right organ system for 38 of 38.
+   - Every off-topic and every unanswerable test question was correctly refused:
+     10/10 and 8/8.
+   - On a set of 77 complex clinical case questions, 65 were answered with
+     textbook references and 12 were marked "not in book" (the per-question sheet
+     is test/questions_results.xlsx).
+   - Patient Portal: the right guide page was retrieved for 35/35 labelled patient
+     questions; every off-topic (8/8) and not-covered (6/6) question was refused,
+     and all 12 safety test cases were routed correctly.
+   - Treatment Guidance: 443 recommendations and 821 trial-statistic sentences
+     parsed from 19 ASCO guidelines in about 1 second; all are verbatim in their
+     PDFs. All 26 evaluation cases put the expected recommendation in the top 3
+     when run through the page itself. On 10 new cases scored once, untouched, the
+     right recommendation was in the top 3 for 5; that is the honest estimate for
+     unseen cases.
+   - Speed: textbook answers take about 34 s, with text streaming from about 10 s.
+     A 600-word article draft takes 2 to 3 minutes. A textbook fallback from
+     Treatment Guidance took about 3 minutes on a cold start (index and model
+     loading); a warm one was not timed, but it is the same pipeline as a
+     Knowledge Assistant answer.
+   - Tests: 124 automated pipeline checks (against a stand-in model and a stand-in
+     Sarvam) and 95 UI checks that click through the real pages offline, plus live
+     checks with the models running.
+
+
+10. TECH STACK
+--------------
+   - Language: Python 3.12
+   - User interface: Streamlit, a multi-page portal with a top navigation bar and a
+     shared stylesheet (app/ui_theme.py)
+   - Language models: open-weight Qwen models, 4-bit quantised (GGUF), served by
+     llama.cpp on the CPU, with no training or fine-tuning
+       Qwen2.5-3B-Instruct  answering from the textbooks, the patient guides and
+                            the literature summaries
+       Qwen3.5-4B           article writing (Qwen3-4B available as a faster option)
+     One model server keeps only one model in memory at a time and swaps on
+     demand (about 4 to 10 s), so the whole system runs in about 8 GB of RAM.
+   - Retrieval: FAISS vector search (BAAI bge-base-en-v1.5 embeddings) and BM25,
+     merged by reciprocal rank fusion, reranked by a cross-encoder
+     (ms-marco-MiniLM-L-6-v2)
+   - Document processing: PyMuPDF for PDF text and page rendering. A parallel
+     pipeline turns the textbooks into passages tagged with organ system and
+     pathology, and parses the NCCN and ASCO PDFs into structured records.
+   - External services (optional): Scite (Assistant API, with literature search as
+     a fallback) and Sarvam AI (speech to text, translation, language
+     identification, speech output)
+   - Reliability: multi-key rotation for both services (rag/keyring.py), a
+     single-flight lock so two identical requests never pay twice, and an on-disk
+     cache shared by everyone
+   - HTTPS: ./start makes a self-signed certificate for the machine and its LAN
+     addresses, because browsers allow the microphone only on a secure page
+   - Testing: scripts/smoke_test.py and scripts/ui_test.py (Streamlit AppTest)
+
+
+11. SETUP AND OPERATION
+-----------------------
+   - Install: a Python 3.12 virtual environment and requirements.txt (the CPU build
+     of PyTorch). Put the source PDFs in data/ and sources/ and run
+     scripts/run_all.sh, which downloads the models and builds the corpus, chunks
+     and indexes (about 90 minutes on a 6-core CPU, mostly embedding).
+   - Run: ./start (model server and portal, https://localhost:8501 and the
+     machine's LAN address), ./stop, ./start --http for plain http, --no-llm for
+     retrieval only, --model 1.5b for a faster generator.
+   - Keys: in .env (gitignored), copied from .env.example. Scite and Sarvam each
+     accept spare keys.
+   - Settings: config/ (models, thresholds and refusal messages, voice and the
+     daily cap, the writer, the guides); the theme is .streamlit/config.toml.
+   - The model server is a plain OpenAI-compatible endpoint, so LLM_BASE_URL in
+     .env can point the platform at a different one.
+
+
+12. SHARING IT WITH OTHER PEOPLE
+--------------------------------
+Everything runs on one machine. To reach it from elsewhere without moving it:
+   - On the same network: the LAN address works once the firewall allows port 8501.
+   - Over the internet from this machine: a free tunnel such as Tailscale Funnel
+     (a permanent https address that reconnects after a restart) or an ngrok free
+     static domain. The machine and the app must stay on.
+   - Hosted free: Oracle Cloud's Always Free ARM server (4 CPUs, 24 GB) runs the
+     whole stack; Hugging Face Spaces (16 GB, sleeps when idle) also fits.
+     Streamlit Community Cloud and most small free tiers are too small for the
+     local model.
+Before making it public, note: the textbooks and NCCN guides are copyrighted, so
+the indexes and source text should not be redistributed without permission, and the
+app has no login, so anyone with the link can spend Sarvam credit up to the daily
+cap.
+
+
+13. LIMITS, STATED PLAINLY
+--------------------------
+   - Decision support and education only, not a clinical decision system and not
+     medical advice. It carries whatever the editions and guideline versions say.
+   - The citation check confirms that a citation exists, not that it is the right
+     one (section 6).
+   - Figures and images are not indexed; answers that would depend on reading a
+     figure will abstain. Complex multi-column tables extract imperfectly.
+   - Long case-vignette questions are sometimes refused by the evidence check
+     even though the books cover them: the main known weakness. Every shortfall
+     measured so far is a safe one (it said "not available" where it could have
+     answered, never the reverse).
+   - Treatment Guidance covers 11 cancers and 19 guidelines; for anything else it
+     says so and falls back to the textbooks, whose answers are generated.
+   - The Patient Portal's safety screen is a pattern match: it catches common
+     phrasings of crisis and emergency, not every possible one.
+   - On a 3B model on a CPU, answers take tens of seconds, and an article draft
+     minutes.
+   - Machine-translated answers are for understanding, not a substitute for a
+     translator in a clinical conversation.
+   - Hindi typed in Latin letters ("bukhar") is treated as English.
+   - Retrieval quality was measured precisely only on tongue cancer (page-level
+     ground truth); the other organ systems are measured at the coarser
+     organ-system level.
+   - The Scite Assistant API has a monthly search limit on its plan; the literature
+     search fallback answers with papers only.
+
+
+14. FUTURE SCOPE AND EXTENSIONS
+-------------------------------
+   - More specialties: add textbooks for cardiology, internal medicine or
+     paediatrics. The pipeline is not tied to oncology, and new books are indexed
+     by re-running it.
+   - More guidelines in Treatment Guidance: the same parser takes any ASCO or
+     similar guideline PDF; adding a cancer is a data change, not a code change.
+   - Better handling of long case questions: rewrite a long case description into a
+     focused search before retrieval, to reduce the few cases where the books do
+     cover a question but it is refused.
+   - Stronger fact-checking: add a model that checks whether each cited passage
+     actually supports its sentence. Today the check confirms that a citation
+     exists, not that it is correct.
+   - Link the tools: let Content Studio drafts cite the textbooks and the
+     literature, turning a draft into a referenced article.
+   - Local literature library: save useful papers from the Research Platform into a
+     searchable offline collection.
+   - Multi-user deployment: a shared hospital server with sign-in, per-user limits
+     and a GPU for faster answers, and a licence for the hosted source material.
+   - Offline voice: on-device speech and translation models, so the Patient Portal
+     in regional languages need not leave the computer.
+   - Patient material in regional languages: reviewed translations of the handouts
+     and the Learn section, rather than machine translation at read time.
+   - An installable app for phones, with the microphone and a language picker on
+     the first screen.

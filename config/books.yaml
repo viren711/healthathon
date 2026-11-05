@@ -86,6 +86,91 @@ books:
     printed_page_regex: '^\s*(?P<page>\d{1,4}(?:\.e\d+)?)\s*$'
 
 
+  - id: mdanderson
+    title: "The MD Anderson Surgical Oncology Handbook"
+    short: "MD Anderson"
+    path: "data/MD_Anderson_Surgical_Oncology_Handbook.pdf"
+    pages: 1160
+
+    # Layout: single-column prose with a clean PDF outline ("N Title" for
+    # all 25 chapters), so the outline supplies the chapter map.
+    has_printed_page_numbers: false
+    strip_patterns: []
+
+    # Tongue-mode window only (chapter 6, Cancer of the Head and Neck).
+    windows:
+      - {start: 280, end: 323, label: "Chapter 6: Cancer of the Head and Neck"}
+
+    exclude_windows:
+      - {start: 1073, end: 1160, label: "Back-of-book index"}
+      - {start: 1, end: 21, label: "Front matter / contributors / contents"}
+
+  - id: imaging
+    title: "Oncologic Imaging: A Multidisciplinary Approach"
+    short: "Oncologic Imaging"
+    path: "data/Oncologic_Imaging_Multidisciplinary_Approach.pdf"
+    pages: 865
+
+    has_printed_page_numbers: false
+    strip_patterns: []
+
+    # The PDF's embedded outline is unusable (chapter titles mixed with
+    # section headings and OCR debris), so chapters come from this map. It was
+    # read off the running headers: every body page of chapter N carries
+    # "N * <chapter title>", and the opener page sits two pages before the
+    # first such header (the page between carries the section banner).
+    use_pdf_outline: false
+    windows: []
+
+    exclude_windows:
+      - {start: 857, end: 865, label: "Back-of-book index"}
+      - {start: 1, end: 12, label: "Front matter / contributors"}
+
+    chapter_map:
+      - {num: 1, title: "A Multidisciplinary Approach to Cancer: A Radiologist’s View", start: 13, end: 18}
+      - {num: 2, title: "A Multidisciplinary Approach to Cancer: A Surgeon’s View", start: 19, end: 24}
+      - {num: 3, title: "A Multidisciplinary Approach to Cancer: A Medical Oncologist’s View", start: 25, end: 28}
+      - {num: 4, title: "A Multidisciplinary Approach to Cancer: A Radiation Oncologist’s View", start: 29, end: 36}
+      - {num: 5, title: "Assessing Response to Therapy", start: 37, end: 45}
+      - {num: 6, title: "Lung Cancer", start: 46, end: 72}
+      - {num: 7, title: "Primary Mediastinal Neoplasms", start: 73, end: 88}
+      - {num: 8, title: "Pleural Tumors", start: 89, end: 103}
+      - {num: 9, title: "Liver Cancer: Hepatocellular and Fibrolamellar Hepatocellular Carcinoma", start: 104, end: 128}
+      - {num: 10, title: "Cholangiocarcinoma", start: 129, end: 159}
+      - {num: 11, title: "Pancreatic Ductal Adenocarcinoma", start: 160, end: 178}
+      - {num: 12, title: "Cystic Pancreatic Lesions", start: 179, end: 197}
+      - {num: 13, title: "Pancreatic Neuroendocrine Tumors", start: 198, end: 214}
+      - {num: 14, title: "Esophageal Cancer", start: 215, end: 234}
+      - {num: 15, title: "Gastric Carcinoma", start: 235, end: 250}
+      - {num: 16, title: "Small Bowel Malignant Tumors", start: 251, end: 269}
+      - {num: 17, title: "Colorectal Cancer", start: 270, end: 289}
+      - {num: 18, title: "Renal Tumors", start: 290, end: 312}
+      - {num: 19, title: "Bladder Cancer and Upper Tracts", start: 313, end: 335}
+      - {num: 20, title: "Testicular Germ Cell Tumors", start: 336, end: 358}
+      - {num: 21, title: "Primary Adrenal Malignancy", start: 359, end: 376}
+      - {num: 22, title: "Prostate Cancer", start: 377, end: 402}
+      - {num: 23, title: "Primary Retroperitoneal Tumors", start: 403, end: 421}
+      - {num: 24, title: "Tumors of the Uterine Corpus", start: 422, end: 438}
+      - {num: 25, title: "Cervical Cancer", start: 439, end: 451}
+      - {num: 26, title: "Ovarian Cancer", start: 452, end: 475}
+      - {num: 27, title: "Breast Cancer", start: 476, end: 504}
+      - {num: 28, title: "Myeloma and Leukemia", start: 505, end: 525}
+      - {num: 29, title: "Hematologic Malignancy: The Lymphomas", start: 526, end: 548}
+      - {num: 30, title: "Thoracic Metastatic Disease", start: 549, end: 556}
+      - {num: 31, title: "Metastases to Abdominal-Pelvic Organs", start: 557, end: 569}
+      - {num: 32, title: "Peritoneal Cavity and Gastrointestinal Tract", start: 570, end: 582}
+      - {num: 33, title: "Bone Metastases", start: 583, end: 601}
+      - {num: 34, title: "Cancer of Unknown Primary", start: 602, end: 611}
+      - {num: 35, title: "Imaging in Thyroid Cancer", start: 612, end: 622}
+      - {num: 36, title: "Melanoma", start: 623, end: 642}
+      - {num: 37, title: "Soft Tissue Sarcomas", start: 643, end: 656}
+      - {num: 38, title: "Interventional Imaging in the Oncologic Patient", start: 657, end: 667}
+      - {num: 39, title: "Complications in the Oncologic Patient: Chest", start: 668, end: 680}
+      - {num: 40, title: "Complications in the Oncologic Patient: Abdomen and Pelvis", start: 681, end: 693}
+      - {num: 41, title: "Pulmonary Embolic Disease and Cardiac Tumors", start: 694, end: 706}
+      - {num: 42, title: "Protocols for Imaging Studies in the Oncologic Patient", start: 707, end: 856}
+
+
 # ---------------------------------------------------------------------------
 # Relevance lexicons. Used by Stage 1 to tier each section and by the
 # topic gate at query time (rag/guard.py reads the same lists).

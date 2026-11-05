@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Run a file of queries through the platform and report what happened.
 
-Feeds queries.txt (or any file of one-query-per-line, #-comments ignored)
+Feeds eval/queries.txt (or any file of one-query-per-line, #-comments ignored)
 through the same `answer_question` the portal uses, and prints one line per
 query with its status and latency. Useful for checking a config change across
 the whole query set without clicking through the UI.
 
-    python scripts/ask_batch.py                       # queries.txt, Ask mode
+    python scripts/ask_batch.py                       # eval/queries.txt, Ask mode
     python scripts/ask_batch.py --locate              # Find mode: no LLM, fast
     python scripts/ask_batch.py --limit 10 --out results.md
 
@@ -36,7 +36,7 @@ def read_queries(path: Path) -> list[str]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("queries", nargs="?", default="queries.txt")
+    ap.add_argument("queries", nargs="?", default="eval/queries.txt")
     ap.add_argument("--limit", type=int, help="only run the first N queries")
     ap.add_argument("--out", help="also write a markdown report here")
     ap.add_argument(

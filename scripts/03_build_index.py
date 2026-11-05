@@ -13,6 +13,13 @@ concurrently in a worker process rather than after it.
     python scripts/03_build_index.py
     python scripts/03_build_index.py --device cpu --model BAAI/bge-small-en-v1.5
     python scripts/03_build_index.py --threads 6
+    python scripts/03_build_index.py --no-reuse      # re-embed everything
+    python scripts/03_build_index.py --chunks corpus/patient/chunks.jsonl \
+        --out-dir artifacts/index_patient            # the Patient Portal index
+
+By default, vectors already in the existing index are reused for every chunk
+whose text is unchanged (same chunk_id and the same embed_text, same model),
+so adding a book only embeds the new book's chunks.
 """
 
 from __future__ import annotations
@@ -72,6 +79,40 @@ def tokenize_for_bm25(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", text.lower())
 
 
+def load_reusable_vectors(out_dir: Path, model_name: str, normalize: bool, prefix: str):
+    """Vectors from the index already in `out_dir`, keyed by chunk_id.
+
+    Returns {chunk_id: (text_hash, vector)}. Empty when there is no previous
+    index or it was built with a different model, prefix or normalisation --
+    those vectors would not be comparable with new ones.
+    """
+    import numpy as np
+
+    meta_path = out_dir / "index_meta.json"
+    if not (meta_path.exists() and (out_dir / "embeddings.npy").exists()):
+        return {}
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    if (
+        meta.get("partial")
+        or meta.get("embedding_model") != model_name
+        or bool(meta.get("normalize")) != bool(normalize)
+        or (meta.get("doc_prefix") or "") != (prefix or "")
+    ):
+        return {}
+    old_rows = [
+        json.loads(line)
+        for line in (out_dir / "chunks.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    vectors = np.load(out_dir / "embeddings.npy")
+    if len(old_rows) != len(vectors):
+        return {}
+    return {
+        r["chunk_id"]: (hashlib.sha1(r["embed_text"].encode()).hexdigest(), vectors[i])
+        for i, r in enumerate(old_rows)
+    }
+
+
 def corpus_fingerprint(rows: list[dict]) -> str:
     """Stable hash of the chunk set, so a stale index is detectable."""
     h = hashlib.sha256()
@@ -92,6 +133,12 @@ def main() -> int:
         "not for building a usable index",
     )
     ap.add_argument("--out-dir", help="write the index here instead of paths.index_dir")
+    ap.add_argument("--chunks", help="index this chunks file instead of paths.chunks_file")
+    ap.add_argument(
+        "--no-reuse",
+        action="store_true",
+        help="embed every chunk, ignoring vectors in the existing index",
+    )
     ap.add_argument(
         "--threads",
         type=int,
@@ -107,7 +154,9 @@ def main() -> int:
     model_name = args.model or emb_cfg["model"]
     batch_size = args.batch_size or emb_cfg["batch_size"]
 
-    chunks_path = ROOT / cfg["paths"]["chunks_file"]
+    chunks_path = Path(args.chunks) if args.chunks else ROOT / cfg["paths"]["chunks_file"]
+    if not chunks_path.is_absolute():
+        chunks_path = ROOT / chunks_path
     if not chunks_path.exists():
         print(f"missing {chunks_path} -- run 02_build_chunks.py first", file=sys.stderr)
         return 1
@@ -147,14 +196,38 @@ def main() -> int:
     model = SentenceTransformer(model_name, device=device)
     model.max_seq_length = emb_cfg.get("max_seq_length", 512)
 
+    out_dir = Path(args.out_dir) if args.out_dir else ROOT / cfg["paths"]["index_dir"]
+    if not out_dir.is_absolute():
+        out_dir = ROOT / out_dir
+
+    # Reuse what the previous index already computed; embed only the rest.
+    reusable = {}
+    if not args.no_reuse and not args.limit:
+        reusable = load_reusable_vectors(
+            out_dir, model_name, emb_cfg.get("normalize", True), emb_cfg.get("doc_prefix", "")
+        )
+    slots: list = [None] * len(rows)
+    todo: list[int] = []
+    for i, r in enumerate(rows):
+        hit = reusable.get(r["chunk_id"])
+        if hit and hit[0] == hashlib.sha1(r["embed_text"].encode()).hexdigest():
+            slots[i] = hit[1]
+        else:
+            todo.append(i)
+    print(f"reusing {len(rows) - len(todo)} vectors, embedding {len(todo)} new chunks")
+
     t0 = time.time()
-    vectors = model.encode(
-        [r["embed_text"] for r in rows],
-        batch_size=batch_size,
-        convert_to_numpy=True,
-        normalize_embeddings=emb_cfg.get("normalize", True),
-        show_progress_bar=True,
-    ).astype("float32")
+    if todo:
+        fresh = model.encode(
+            [rows[i]["embed_text"] for i in todo],
+            batch_size=batch_size,
+            convert_to_numpy=True,
+            normalize_embeddings=emb_cfg.get("normalize", True),
+            show_progress_bar=True,
+        ).astype("float32")
+        for i, vec in zip(todo, fresh):
+            slots[i] = vec
+    vectors = np.stack(slots).astype("float32")
     print(f"embedded in {time.time() - t0:.1f}s -> {vectors.shape}")
 
     dim = int(vectors.shape[1])
@@ -166,9 +239,6 @@ def main() -> int:
     index = faiss.IndexFlatIP(dim)
     index.add(vectors)
 
-    out_dir = Path(args.out_dir) if args.out_dir else ROOT / cfg["paths"]["index_dir"]
-    if not out_dir.is_absolute():
-        out_dir = ROOT / out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
     faiss.write_index(index, str(out_dir / "faiss.index"))

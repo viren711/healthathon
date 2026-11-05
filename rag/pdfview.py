@@ -35,6 +35,41 @@ def _book_paths() -> dict[str, Path]:
     return paths
 
 
+@lru_cache(maxsize=1)
+def _guide_paths() -> dict[str, Path]:
+    """Patient Portal sources: the NCCN guides, by id and by the source label
+    their chunks carry ("NCCN · Mouth Cancer").
+
+    Kept apart from the books and matched EXACTLY: guide ids such as "all" or
+    "bone" would otherwise satisfy the books' substring fallback below.
+    """
+    guides_file = ROOT / "config" / "patient_guides.yaml"
+    if not guides_file.exists():
+        return {}
+    paths: dict[str, Path] = {}
+    for guide in yaml.safe_load(guides_file.read_text(encoding="utf-8"))["guides"]:
+        path = ROOT / guide["path"]
+        paths[f"nccn · {guide['title']}".lower()] = path
+        paths[guide["id"].lower()] = path
+    return paths
+
+
+@lru_cache(maxsize=1)
+def _asco_paths() -> dict[str, Path]:
+    """Treatment Guidance sources: the ASCO guidelines, by id and by the label
+    the page uses ("ASCO · Stage IV NSCLC With Driver Alterations"). Exact
+    match only, for the same reason as the NCCN guides."""
+    registry = ROOT / "config" / "asco_guidelines.yaml"
+    if not registry.exists():
+        return {}
+    paths: dict[str, Path] = {}
+    for g in yaml.safe_load(registry.read_text(encoding="utf-8"))["guidelines"]:
+        path = ROOT / g["path"]
+        paths[f"asco · {g['title']}".lower()] = path
+        paths[f"asco:{g['id']}"] = path
+    return paths
+
+
 def resolve_book(name: str) -> Path | None:
     """Find the source PDF for a book id, short name or full title."""
     if not name:
@@ -43,6 +78,10 @@ def resolve_book(name: str) -> Path | None:
     key = name.strip().lower()
     if key in paths:
         return paths[key]
+    if key in _guide_paths():
+        return _guide_paths()[key]
+    if key in _asco_paths():
+        return _asco_paths()[key]
     # Full titles ("DeVita, Hellman & Rosenberg's Cancer: ...") -- match on the
     # short name appearing anywhere in the string.
     for short, path in paths.items():

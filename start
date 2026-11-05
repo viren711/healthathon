@@ -5,6 +5,14 @@
 #     ./start --model 1.5b    # smaller generator: ~2x faster, but it transcribes
 #     ./start --port 8600     # different UI port
 #     ./start --no-llm        # retrieval + topic locator only, no generator
+#     ./start --http          # plain http (the microphone then works only on localhost)
+#
+# The portal is served over HTTPS with a self-signed certificate made in
+# certs/ on first run, because browsers only allow the microphone on a
+# secure page; without it a phone on the LAN could type but not speak. The
+# browser warns once about the certificate: Advanced -> Proceed. The
+# certificate covers localhost and this machine's current LAN addresses, and
+# is remade automatically when the address changes.
 #
 # Closing this terminal stops everything. ./stop does the same from anywhere,
 # and is what to reach for if a previous run was killed and left orphans.
@@ -31,12 +39,14 @@ UI_PORT=8501
 LLM_PORT=8000
 WITH_LLM=1
 MODEL_CHOICE=""
+HTTPS=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --port)     UI_PORT="$2"; shift 2 ;;
         --llm-port) LLM_PORT="$2"; shift 2 ;;
         --no-llm)   WITH_LLM=0; shift ;;
+        --http)     HTTPS=0; shift ;;
         --model)
             case "$2" in
                 1.5b|1.5B) MODEL_CHOICE=1.5b ;;
@@ -44,7 +54,7 @@ while [[ $# -gt 0 ]]; do
                 *) echo "--model takes 1.5b or 3b" >&2; exit 2 ;;
             esac
             shift 2 ;;
-        -h|--help)  sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)  sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -201,8 +211,45 @@ else
     bold "Starting without a model server (retrieval + topic locator only)."
 fi
 
+# --- HTTPS certificate -----------------------------------------------------
+SSL_ARGS=()
+SCHEME=http
+LAN_IPS=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
+if (( HTTPS )); then
+    CERT=certs/cert.pem KEY=certs/key.pem
+    need_cert=0
+    [[ -f "$CERT" && -f "$KEY" ]] || need_cert=1
+    # Remade when this machine has an address the certificate does not cover.
+    if (( ! need_cert )); then
+        sans=$(openssl x509 -in "$CERT" -noout -ext subjectAltName 2>/dev/null)
+        for ip in $LAN_IPS; do
+            grep -q "IP Address:$ip\b" <<< "$sans" || need_cert=1
+        done
+    fi
+    if (( need_cert )); then
+        if ! command -v openssl > /dev/null; then
+            warn "openssl not found -- serving plain http; the microphone will work only on localhost."
+            HTTPS=0
+        else
+            mkdir -p certs
+            san="DNS:localhost,IP:127.0.0.1"
+            for ip in $LAN_IPS; do san="$san,IP:$ip"; done
+            openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
+                -keyout "$KEY" -out "$CERT" -subj "/CN=healthathon" \
+                -addext "subjectAltName=$san" > /dev/null 2>&1 \
+                && chmod 600 "$KEY" \
+                && echo "  made a self-signed certificate for: ${san//DNS:/}" \
+                || { warn "could not make a certificate -- serving plain http."; HTTPS=0; }
+        fi
+    fi
+    if (( HTTPS )); then
+        SSL_ARGS=(--server.sslCertFile "$CERT" --server.sslKeyFile "$KEY")
+        SCHEME=https
+    fi
+fi
+
 # --- web UI ----------------------------------------------------------------
-bold "Starting the portal on :$UI_PORT ..."
+bold "Starting the portal on :$UI_PORT ($SCHEME) ..."
 # LLM_MODEL is exported above when --model was given, so the child inherits
 # it; passing it inline would set it to the empty string when it was not.
 LLM_BASE_URL="http://127.0.0.1:$LLM_PORT/v1" \
@@ -210,16 +257,23 @@ LLM_BASE_URL="http://127.0.0.1:$LLM_PORT/v1" \
         --server.port "$UI_PORT" \
         --server.headless true \
         --browser.gatherUsageStats false \
+        "${SSL_ARGS[@]}" \
         > logs/streamlit.log 2>&1 &
 PIDS+=($!)
 
 for _ in $(seq 40); do
-    curl -s -m 2 "http://127.0.0.1:$UI_PORT/_stcore/health" 2>/dev/null | grep -q ok && break
+    curl -sk -m 2 "$SCHEME://127.0.0.1:$UI_PORT/_stcore/health" 2>/dev/null | grep -q ok && break
     sleep 0.5
 done
 
 echo
-bold "  Open:  http://localhost:$UI_PORT"
+bold "  Open:  $SCHEME://localhost:$UI_PORT"
+for ip in $LAN_IPS; do
+    echo "         $SCHEME://$ip:$UI_PORT   (other devices on this network)"
+done
+if [[ $SCHEME == https ]]; then
+    echo "         The browser warns once about the self-signed certificate: Advanced -> Proceed."
+fi
 echo   "  Logs:  logs/streamlit.log, logs/llama_server.log"
 echo
 echo   "  Press Ctrl+C, or just close this terminal, to stop everything."

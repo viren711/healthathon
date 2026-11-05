@@ -25,6 +25,9 @@ scikit-learn==1.9.1
 # --- Stage 4 + app ----------------------------------------------------------
 streamlit==1.63.0
 
+# Voice and Indian languages (docs/voice.md); used only when SARVAM_API_KEY is set.
+sarvamai==0.1.41
+
 # The generator is NOT a Python package: scripts/00_fetch_models.sh downloads
 # a prebuilt llama.cpp llama-server binary and a GGUF. This machine has no C
 # compiler or cmake, so llama-cpp-python cannot be built from source here.

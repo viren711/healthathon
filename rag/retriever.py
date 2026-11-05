@@ -16,6 +16,26 @@ import numpy as np
 
 from rag.config import load_config, path_of
 
+# The textbook index and the patient index are embedded with the same model
+# and reranked with the same cross-encoder, so both retrievers share one
+# loaded copy of each -- the second index costs its vectors, not another
+# ~500 MB of model weights.
+_MODELS: dict[tuple, Any] = {}
+
+
+def _shared_model(kind: str, name: str, device: str):
+    key = (kind, name, device)
+    if key not in _MODELS:
+        if kind == "embedder":
+            from sentence_transformers import SentenceTransformer
+
+            _MODELS[key] = SentenceTransformer(name, device=device)
+        else:
+            from sentence_transformers import CrossEncoder
+
+            _MODELS[key] = CrossEncoder(name, device=device)
+    return _MODELS[key]
+
 
 def tokenize_for_bm25(text: str) -> list[str]:
     """Must match scripts/03_build_index.py exactly or BM25 scores are garbage."""
@@ -69,12 +89,11 @@ class Retriever:
     # -- loading ------------------------------------------------------------
 
     @classmethod
-    def load(cls, device: str | None = None) -> "Retriever":
+    def load(cls, device: str | None = None, index_dir=None) -> "Retriever":
         import faiss
-        from sentence_transformers import SentenceTransformer
 
         cfg = load_config()
-        index_dir = path_of("index_dir")
+        index_dir = index_dir or path_of("index_dir")
         meta_path = index_dir / "index_meta.json"
         if not meta_path.exists():
             raise FileNotFoundError(
@@ -121,13 +140,11 @@ class Retriever:
             import torch
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        obj._embedder = SentenceTransformer(meta["embedding_model"], device=device)
+        obj._embedder = _shared_model("embedder", meta["embedding_model"], device)
         obj._embedder.max_seq_length = meta.get("max_seq_length", 512)
 
         if cfg["reranker"]["enabled"]:
-            from sentence_transformers import CrossEncoder
-
-            obj._reranker = CrossEncoder(cfg["reranker"]["model"], device=device)
+            obj._reranker = _shared_model("reranker", cfg["reranker"]["model"], device)
             # Explicit, because shortening it is a tempting "optimisation"
             # that measurably costs recall -- see the note in rag.yaml.
             obj._reranker.max_length = cfg["reranker"].get("max_length", 512)
@@ -331,6 +348,12 @@ class Retriever:
         )
 
 
-@lru_cache(maxsize=1)
-def get_retriever() -> Retriever:
+@lru_cache(maxsize=2)
+def get_retriever(corpus: str = "books") -> Retriever:
+    """The retriever for one corpus: "books" (the textbooks, for the Knowledge
+    Assistant) or "patient" (the NCCN Guidelines for Patients)."""
+    if corpus == "patient":
+        from rag.config import patient_path
+
+        return Retriever.load(index_dir=patient_path("index_dir"))
     return Retriever.load()

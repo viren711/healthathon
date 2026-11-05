@@ -1,0 +1,619 @@
+# Registry of the NCCN Guidelines for Patients indexed by the Patient Portal.
+#
+# One entry per PDF in data/nccn/ (copied from the NCCN patient resources,
+# https://www.nccn.org/patientresources/patient-resources/guidelines-for-patients).
+# These are copyrighted; like the textbooks, they stay local and are never
+# committed (data/, corpus/ and artifacts/ are gitignored).
+#
+#   id           stable key; used as the chunk `pathology` so the retriever's
+#                existing scope filter narrows a search to one guide
+#   category     one of the four NCCN folders; used as the chunk `organ_system`
+#                so a search can be narrowed to a whole topic area
+#   pathologies  the Knowledge Assistant's taxonomy ids (config/organ_systems.yaml)
+#                this guide is about, for linking the two tools; empty for
+#                guides that are not about one disease
+#   year         edition, shown in every citation
+
+categories:
+  detection_prevention: Detection, prevention & risk reduction
+  treatment: Treatment by cancer type
+  supportive_care: Supportive care
+  specific_populations: Specific populations
+guides:
+- id: breast_screening
+  title: Breast Cancer Screening and Diagnosis
+  year: 2026
+  category: detection_prevention
+  pathologies:
+  - breast_cancer
+  pages: 54
+  path: data/nccn/Guidelines for Detection, Prevention, & Risk Reduction/breastcancerscreening-patient.pdf
+- id: colorectal_screening
+  title: Colorectal Cancer Screening
+  year: 2024
+  category: detection_prevention
+  pathologies:
+  - gi_colon
+  - gi_rectum
+  pages: 40
+  path: data/nccn/Guidelines for Detection, Prevention, & Risk Reduction/colorectal-screening-patient.pdf
+- id: genetics
+  title: Genetic Testing for Hereditary Cancer
+  year: 2026
+  category: detection_prevention
+  pathologies: []
+  pages: 58
+  path: data/nccn/Guidelines for Detection, Prevention, & Risk Reduction/genetics-patient.pdf
+- id: lung_screening
+  title: Lung Cancer Screening
+  year: 2026
+  category: detection_prevention
+  pathologies:
+  - thx_nsclc
+  pages: 58
+  path: data/nccn/Guidelines for Detection, Prevention, & Risk Reduction/lung_screening-patient.pdf
+- id: prostate_screening
+  title: Prostate Cancer Screening
+  year: 2026
+  category: detection_prevention
+  pathologies:
+  - gu_prostate
+  pages: 42
+  path: data/nccn/Guidelines for Detection, Prevention, & Risk Reduction/prostate-screening-patient.pdf
+- id: caregivers
+  title: Caregiving for People With Cancer
+  year: 2026
+  category: specific_populations
+  pathologies: []
+  pages: 68
+  path: data/nccn/Guidelines for Specific Populations/Caregiver-patient.pdf
+- id: aya
+  title: Adolescent and Young Adult Cancer
+  year: 2023
+  category: specific_populations
+  pathologies: []
+  pages: 70
+  path: data/nccn/Guidelines for Specific Populations/aya-patient.pdf
+- id: older_adults
+  title: Older Adults With Cancer
+  year: 2026
+  category: specific_populations
+  pathologies: []
+  pages: 82
+  path: data/nccn/Guidelines for Specific Populations/older-adult-patient.pdf
+- id: gvhd
+  title: Graft-Versus-Host Disease
+  year: 2026
+  category: supportive_care
+  pathologies:
+  - haem_transplant
+  pages: 48
+  path: data/nccn/Guidelines for Supportive Care/GVDH-patient-guideline.pdf
+- id: blood_clots
+  title: Blood Clots and Cancer
+  year: 2026
+  category: supportive_care
+  pathologies: []
+  pages: 46
+  path: data/nccn/Guidelines for Supportive Care/bloodclots-patient.pdf
+- id: distress
+  title: Distress During Cancer Care
+  year: 2026
+  category: supportive_care
+  pathologies: []
+  pages: 54
+  path: data/nccn/Guidelines for Supportive Care/distress-patient.pdf
+- id: fatigue
+  title: Fatigue and Cancer
+  year: 2024
+  category: supportive_care
+  pathologies: []
+  pages: 28
+  path: data/nccn/Guidelines for Supportive Care/fatigue-patient.pdf
+- id: immunotherapy_checkpoint
+  title: 'Immunotherapy Side Effects: Immune Checkpoint Inhibitors'
+  year: 2026
+  category: supportive_care
+  pathologies: []
+  pages: 100
+  path: data/nccn/Guidelines for Supportive Care/immunotherapy-checkpoint-patient.pdf
+- id: immunotherapy_car_t
+  title: 'Immunotherapy Side Effects: CAR T-Cell and Lymphocyte Engager Therapies'
+  year: 2026
+  category: supportive_care
+  pathologies: []
+  pages: 52
+  path: data/nccn/Guidelines for Supportive Care/immunotherapy-se-car-tcell-patient.pdf
+- id: low_blood_counts
+  title: Low Blood Cell Counts
+  year: 2026
+  category: supportive_care
+  pathologies:
+  - cc_supportive
+  pages: 48
+  path: data/nccn/Guidelines for Supportive Care/low-blood-patient.pdf
+- id: nausea
+  title: Nausea and Vomiting
+  year: 2026
+  category: supportive_care
+  pathologies: []
+  pages: 54
+  path: data/nccn/Guidelines for Supportive Care/nausea-patient.pdf
+- id: palliative
+  title: Palliative Care
+  year: 2023
+  category: supportive_care
+  pathologies: []
+  pages: 44
+  path: data/nccn/Guidelines for Supportive Care/palliative-patient.pdf
+- id: quitting_smoking
+  title: Quitting Smoking
+  year: 2026
+  category: supportive_care
+  pathologies: []
+  pages: 46
+  path: data/nccn/Guidelines for Supportive Care/quitting-smoking-patient.pdf
+- id: survivorship_late_effects
+  title: 'Survivorship: Late and Long-Term Effects'
+  year: 2026
+  category: supportive_care
+  pathologies: []
+  pages: 98
+  path: data/nccn/Guidelines for Supportive Care/survivorship-crl-patient.pdf
+- id: survivorship_healthy_living
+  title: 'Survivorship: Healthy Living'
+  year: 2026
+  category: supportive_care
+  pathologies: []
+  pages: 52
+  path: data/nccn/Guidelines for Supportive Care/survivorship-hl-patient.pdf
+- id: cutaneous_b_cell_lymphoma
+  title: Primary Cutaneous B-Cell Lymphomas
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_cutaneous_lymphoma
+  pages: 42
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/CBCL-patient.pdf
+- id: mantle_cell_lymphoma
+  title: Mantle Cell Lymphoma
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_nhl
+  pages: 64
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/Mantle-patient-guideline.pdf
+- id: peripheral_t_cell_lymphoma
+  title: Peripheral T-Cell Lymphomas
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_nhl
+  pages: 56
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/PTCL-patient-guideline.pdf
+- id: small_cell_lung
+  title: Small Cell Lung Cancer
+  year: 2024
+  category: treatment
+  pathologies:
+  - thx_sclc
+  pages: 66
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/SCLC-patient-guideline.pdf
+- id: adrenal
+  title: Adrenal Tumors
+  year: 2026
+  category: treatment
+  pathologies:
+  - endo_adrenal
+  pages: 52
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/adrenal-patient.pdf
+- id: all_adult
+  title: Acute Lymphoblastic Leukemia
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_acute_leukaemia
+  pages: 72
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/all-patient.pdf
+- id: aml
+  title: Acute Myeloid Leukemia
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_acute_leukaemia
+  pages: 80
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/aml-patient.pdf
+- id: anal
+  title: Anal Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_anal
+  pages: 50
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/anal-patient.pdf
+- id: basal_cell_skin
+  title: Basal Cell Skin Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - skin_nonmelanoma
+  pages: 50
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/basal-cell-patient-guideline.pdf
+- id: bladder
+  title: Bladder Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gu_bladder
+  pages: 92
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/bladder-patient.pdf
+- id: bone
+  title: Bone Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - sarc_bone
+  pages: 64
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/bone-patient.pdf
+- id: brain_glioma
+  title: 'Brain Cancer: Gliomas'
+  year: 2026
+  category: treatment
+  pathologies:
+  - cns_high_grade_glioma
+  - cns_low_grade_glioma
+  pages: 74
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/brain-gliomas-patient.pdf
+- id: breast_invasive
+  title: Invasive Breast Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - breast_cancer
+  pages: 86
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/breast-invasive-patient.pdf
+- id: cervical
+  title: Cervical Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gyn_cervix
+  pages: 76
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/cervical-patient-guideline.pdf
+- id: cll
+  title: Chronic Lymphocytic Leukemia
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_chronic_leukaemia
+  pages: 64
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/cll-patient.pdf
+- id: cml
+  title: Chronic Myeloid Leukemia
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_chronic_leukaemia
+  pages: 66
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/cml-patient.pdf
+- id: colon
+  title: Colon Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_colon
+  pages: 56
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/colon-patient.pdf
+- id: cutaneous_t_cell_lymphoma
+  title: Cutaneous T-Cell Lymphomas
+  year: 2024
+  category: treatment
+  pathologies:
+  - haem_cutaneous_lymphoma
+  pages: 82
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/ctcl-patient.pdf
+- id: esophageal
+  title: Esophageal Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_esophagus
+  pages: 108
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/esophageal-patient.pdf
+- id: gallbladder_bile_duct
+  title: Gallbladder and Bile Duct Cancers
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_liver_biliary
+  pages: 74
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/gallandbile-hp-patient.pdf
+- id: gist
+  title: Gastrointestinal Stromal Tumors
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_gist
+  pages: 36
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/gist-patient.pdf
+- id: nasopharyngeal
+  title: Nasopharyngeal Cancer
+  year: 2025
+  category: treatment
+  pathologies:
+  - hn_nasopharynx
+  pages: 62
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/hn-nasopharynx-patient.pdf
+- id: mouth
+  title: Mouth Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - hn_oral_cavity
+  pages: 66
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/hn-oral-patient.pdf
+- id: throat
+  title: Throat Cancer (Oropharyngeal)
+  year: 2025
+  category: treatment
+  pathologies:
+  - hn_oropharynx
+  pages: 78
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/hn-oropharyngeal-patient.pdf
+- id: hodgkin
+  title: Hodgkin Lymphoma
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_hodgkin
+  pages: 68
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/hodgkin-patient.pdf
+- id: hodgkin_children
+  title: Hodgkin Lymphoma in Children
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_hodgkin
+  - paed_leuk_lymphoma
+  pages: 66
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/hodgkinlymphomainchildren-patient.pdf
+- id: inflammatory_breast
+  title: Inflammatory Breast Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - breast_cancer
+  pages: 74
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/inflammatory-breast-patient.pdf
+- id: kidney
+  title: Kidney Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gu_kidney
+  pages: 78
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/kidney-patient.pdf
+- id: liver
+  title: Liver Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_liver_biliary
+  pages: 56
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/liver-hp-patient.pdf
+- id: lung_early
+  title: Early and Locally Advanced Non-Small Cell Lung Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - thx_nsclc
+  pages: 82
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/lung-early-stage-patient.pdf
+- id: mds
+  title: Myelodysplastic Syndromes
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_mds
+  pages: 62
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/mds-patient.pdf
+- id: melanoma
+  title: Melanoma
+  year: 2026
+  category: treatment
+  pathologies:
+  - skin_melanoma
+  pages: 104
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/melanoma-patient.pdf
+- id: mesothelioma
+  title: Pleural Mesothelioma
+  year: 2026
+  category: treatment
+  pathologies:
+  - thx_mesothelioma
+  pages: 42
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/mpm-patient.pdf
+- id: mpn
+  title: Myeloproliferative Neoplasms
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_chronic_leukaemia
+  pages: 68
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/mpn-patient.pdf
+- id: myeloma
+  title: Multiple Myeloma
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_myeloma
+  pages: 72
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/myeloma-patient.pdf
+- id: marginal_zone_lymphoma
+  title: Marginal Zone Lymphomas
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_nhl
+  pages: 82
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/mzl-patient.pdf
+- id: neuroendocrine
+  title: Neuroendocrine Tumors
+  year: 2026
+  category: treatment
+  pathologies:
+  - endo_neuroendocrine
+  pages: 80
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/neuroendocrine-patient.pdf
+- id: dlbcl
+  title: Diffuse Large B-Cell Lymphomas
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_nhl
+  pages: 86
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/nhl-diffuse-patient.pdf
+- id: follicular_lymphoma
+  title: Follicular Lymphoma
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_nhl
+  pages: 70
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/nhl-follicular-patient.pdf
+- id: ovarian
+  title: Ovarian Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gyn_ovary
+  pages: 74
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/ovarian-patient.pdf
+- id: pancreatic
+  title: Pancreatic Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_pancreas
+  pages: 74
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/pancreatic-patient.pdf
+- id: cns_lymphoma
+  title: Primary Central Nervous System Lymphoma
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_cns_lymphoma
+  pages: 58
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/pcnsl-patient.pdf
+- id: all_children
+  title: Acute Lymphoblastic Leukemia in Children
+  year: 2026
+  category: treatment
+  pathologies:
+  - paed_leuk_lymphoma
+  pages: 84
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/ped_all_patient.pdf
+- id: prostate_advanced
+  title: Advanced-Stage Prostate Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gu_prostate
+  pages: 82
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/prostate-advanced-patient.pdf
+- id: prostate_early
+  title: Early-Stage Prostate Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gu_prostate
+  pages: 84
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/prostate-early-patient.pdf
+- id: rectal
+  title: Rectal Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_rectum
+  pages: 64
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/rectal-patient.pdf
+- id: soft_tissue_sarcoma
+  title: Soft Tissue Sarcoma
+  year: 2025
+  category: treatment
+  pathologies:
+  - sarc_soft_tissue
+  pages: 66
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/sarcoma-patient.pdf
+- id: small_bowel
+  title: Small Bowel Adenocarcinoma
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_small_bowel
+  pages: 48
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/small-bowel-patient.pdf
+- id: squamous_cell_skin
+  title: Squamous Cell Skin Cancer
+  year: 2023
+  category: treatment
+  pathologies:
+  - skin_nonmelanoma
+  pages: 60
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/squamous_cell-patient.pdf
+- id: dcis
+  title: Ductal Carcinoma In Situ (Stage 0 Breast Cancer)
+  year: 2026
+  category: treatment
+  pathologies:
+  - breast_cancer
+  pages: 52
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/stage_0_breast-patient.pdf
+- id: metastatic_breast
+  title: Metastatic Breast Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - breast_cancer
+  pages: 60
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/stage_iv_breast-patient.pdf
+- id: stomach
+  title: Stomach Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gi_esophagus
+  pages: 94
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/stomach-patient.pdf
+- id: systemic_mastocytosis
+  title: Systemic Mastocytosis
+  year: 2026
+  category: treatment
+  pathologies:
+  - haem_general
+  pages: 68
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/systemic-mastocytosis-patient-guideline.pdf
+- id: thyroid
+  title: Thyroid Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - endo_thyroid
+  pages: 68
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/thyroid-patient.pdf
+- id: uterine
+  title: Uterine Cancer
+  year: 2026
+  category: treatment
+  pathologies:
+  - gyn_uterus
+  pages: 70
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/uterine-patient.pdf
+- id: waldenstrom
+  title: Waldenström Macroglobulinemia
+  year: 2025
+  category: treatment
+  pathologies:
+  - haem_nhl
+  pages: 52
+  path: data/nccn/Guidelines for Treatment of Cancer by Type/waldenstrom-patient.pdf

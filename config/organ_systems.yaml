@@ -54,7 +54,7 @@ systems:
         chapters: {gunderson: [45, 46]}
       - id: hn_general
         label: "Head & neck (general)"
-        chapters: {gunderson: [37], devita: [44, 45, 46]}
+        chapters: {gunderson: [37], devita: [44, 45, 46], mdanderson: [6]}
 
   - id: cns
     label: "Central Nervous System"
@@ -79,48 +79,48 @@ systems:
         chapters: {gunderson: [36], devita: [111]}
       - id: cns_general
         label: "CNS (general)"
-        chapters: {gunderson: [30], devita: [93, 94]}
+        chapters: {gunderson: [30], devita: [93, 94], mdanderson: [21]}
 
   - id: thoracic
     label: "Thorax & Lung"
     pathologies:
       - id: thx_nsclc
         label: "Non-small-cell lung cancer"
-        chapters: {devita: [47, 48], gunderson: [51]}
+        chapters: {devita: [47, 48], gunderson: [51], imaging: [6]}
       - id: thx_sclc
         label: "Small cell & neuroendocrine lung"
         chapters: {devita: [49], gunderson: [50]}
       - id: thx_mediastinum
         label: "Mediastinum & uncommon thoracic"
-        chapters: {devita: [50], gunderson: [52]}
+        chapters: {devita: [50], gunderson: [52], imaging: [7]}
       - id: thx_mesothelioma
         label: "Mesothelioma"
-        chapters: {devita: [109]}
+        chapters: {devita: [109], imaging: [8]}
       - id: thx_general
         label: "Thoracic (general)"
-        chapters: {gunderson: [49]}
+        chapters: {gunderson: [49], mdanderson: [7], imaging: [41]}
 
   - id: gi
     label: "Gastrointestinal"
     pathologies:
       - id: gi_esophagus
         label: "Oesophagus & stomach"
-        chapters: {devita: [51, 52, 53], gunderson: [54]}
+        chapters: {devita: [51, 52, 53], gunderson: [54], mdanderson: [8, 9], imaging: [14, 15]}
       - id: gi_pancreas
         label: "Pancreas"
-        chapters: {devita: [54, 55], gunderson: [55]}
+        chapters: {devita: [54, 55], gunderson: [55], mdanderson: [14], imaging: [11, 12]}
       - id: gi_liver_biliary
         label: "Liver & biliary tree"
-        chapters: {devita: [56, 57, 58], gunderson: [56]}
+        chapters: {devita: [56, 57, 58], gunderson: [56], mdanderson: [13], imaging: [9, 10]}
       - id: gi_small_bowel
         label: "Small bowel"
-        chapters: {devita: [59]}
+        chapters: {devita: [59], mdanderson: [10], imaging: [16]}
       - id: gi_gist
         label: "Gastrointestinal stromal tumour"
         chapters: {devita: [60]}
       - id: gi_colon
         label: "Colon"
-        chapters: {devita: [61, 62], gunderson: [57]}
+        chapters: {devita: [61, 62], gunderson: [57], mdanderson: [12], imaging: [17]}
       - id: gi_rectum
         label: "Rectum"
         chapters: {devita: [63], gunderson: [58]}
@@ -129,7 +129,7 @@ systems:
         chapters: {devita: [64], gunderson: [59]}
       - id: gi_peritoneal
         label: "Peritoneal disease"
-        chapters: {devita: [110]}
+        chapters: {devita: [110], mdanderson: [11]}
       - id: gi_general
         label: "Gastrointestinal (general)"
         chapters: {gunderson: [53]}
@@ -139,67 +139,67 @@ systems:
     pathologies:
       - id: gu_kidney
         label: "Kidney & ureter"
-        chapters: {devita: [65, 66], gunderson: [64]}
+        chapters: {devita: [65, 66], gunderson: [64], imaging: [18]}
       - id: gu_bladder
         label: "Bladder"
-        chapters: {devita: [67, 68], gunderson: [62]}
+        chapters: {devita: [67, 68], gunderson: [62], imaging: [19]}
       - id: gu_prostate
         label: "Prostate"
-        chapters: {devita: [69, 70], gunderson: [61]}
+        chapters: {devita: [69, 70], gunderson: [61], imaging: [22]}
       - id: gu_penis_urethra
         label: "Penis & urethra"
         chapters: {devita: [71], gunderson: [65]}
       - id: gu_testis
         label: "Testis"
-        chapters: {devita: [72], gunderson: [63]}
+        chapters: {devita: [72], gunderson: [63], imaging: [20]}
       - id: gu_general
         label: "Genitourinary (general)"
-        chapters: {gunderson: [60]}
+        chapters: {gunderson: [60], mdanderson: [19]}
 
   - id: gyn
     label: "Gynaecological"
     pathologies:
       - id: gyn_cervix
         label: "Cervix"
-        chapters: {devita: [74], gunderson: [67]}
+        chapters: {devita: [74], gunderson: [67], imaging: [25]}
       - id: gyn_uterus
         label: "Uterine body & endometrium"
-        chapters: {devita: [75], gunderson: [68]}
+        chapters: {devita: [75], gunderson: [68], imaging: [24]}
       - id: gyn_vulva_vagina
         label: "Vulva & vagina"
         chapters: {gunderson: [69]}
       - id: gyn_ovary
         label: "Ovary"
-        chapters: {devita: [77], gunderson: [70]}
+        chapters: {devita: [77], gunderson: [70], imaging: [26]}
       - id: gyn_trophoblastic
         label: "Gestational trophoblastic neoplasia"
         chapters: {devita: [76]}
       - id: gyn_general
         label: "Gynaecological (general)"
-        chapters: {devita: [73], gunderson: [66]}
+        chapters: {devita: [73], gunderson: [66], mdanderson: [20]}
 
   - id: breast
     label: "Breast"
     pathologies:
       - id: breast_cancer
         label: "Breast cancer"
-        chapters: {devita: [78, 79], gunderson: [71, 72, 73, 74]}
+        chapters: {devita: [78, 79], gunderson: [71, 72, 73, 74], mdanderson: [1, 2], imaging: [27]}
 
   - id: endocrine
     label: "Endocrine"
     pathologies:
       - id: endo_thyroid
         label: "Thyroid"
-        chapters: {devita: [81], gunderson: [44]}
+        chapters: {devita: [81], gunderson: [44], mdanderson: [17], imaging: [35]}
       - id: endo_parathyroid
         label: "Parathyroid"
         chapters: {devita: [82]}
       - id: endo_adrenal
         label: "Adrenal"
-        chapters: {devita: [83]}
+        chapters: {devita: [83], mdanderson: [16], imaging: [21]}
       - id: endo_neuroendocrine
         label: "Neuroendocrine & carcinoid"
-        chapters: {devita: [84, 85]}
+        chapters: {devita: [84, 85], mdanderson: [15], imaging: [13]}
       - id: endo_men
         label: "Multiple endocrine neoplasia"
         chapters: {devita: [86]}
@@ -212,7 +212,7 @@ systems:
     pathologies:
       - id: sarc_soft_tissue
         label: "Soft-tissue sarcoma"
-        chapters: {devita: [88], gunderson: [75]}
+        chapters: {devita: [88], gunderson: [75], mdanderson: [5], imaging: [23, 37]}
       - id: sarc_bone
         label: "Bone sarcoma"
         chapters: {devita: [89]}
@@ -228,10 +228,10 @@ systems:
     pathologies:
       - id: skin_nonmelanoma
         label: "Non-melanoma skin cancer"
-        chapters: {devita: [90], gunderson: [47]}
+        chapters: {devita: [90], gunderson: [47], mdanderson: [4]}
       - id: skin_melanoma
         label: "Cutaneous melanoma"
-        chapters: {devita: [91, 92], gunderson: [48]}
+        chapters: {devita: [91, 92], gunderson: [48], mdanderson: [3], imaging: [36]}
 
   - id: haematological
     label: "Haematological & Lymphoid"
@@ -259,13 +259,13 @@ systems:
         chapters: {devita: [106]}
       - id: haem_myeloma
         label: "Plasma cell neoplasms & myeloma"
-        chapters: {devita: [107], gunderson: [90]}
+        chapters: {devita: [107], gunderson: [90], imaging: [28]}
       - id: haem_transplant
         label: "Stem cell transplantation"
         chapters: {devita: [123, 124]}
       - id: haem_general
         label: "Haematological (general)"
-        chapters: {devita: [96], gunderson: [87]}
+        chapters: {devita: [96], gunderson: [87], mdanderson: [18], imaging: [29]}
 
   - id: paediatric
     label: "Paediatric"
@@ -300,13 +300,13 @@ systems:
     pathologies:
       - id: cc_unknown_primary
         label: "Cancer of unknown primary"
-        chapters: {devita: [108]}
+        chapters: {devita: [108], mdanderson: [22], imaging: [34]}
       - id: cc_metastatic
         label: "Metastatic disease by target organ"
-        chapters: {devita: [116, 117, 118, 119, 120, 121, 122]}
+        chapters: {devita: [116, 117, 118, 119, 120, 121, 122], imaging: [30, 31, 32, 33]}
       - id: cc_emergencies
         label: "Oncologic emergencies"
-        chapters: {devita: [112, 113, 114, 115]}
+        chapters: {devita: [112, 113, 114, 115], mdanderson: [23], imaging: [39, 40]}
       - id: cc_supportive
         label: "Infection & marrow toxicity"
         chapters: {devita: [125, 126]}

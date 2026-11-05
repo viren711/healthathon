@@ -3,8 +3,8 @@
 # One query per line; blank lines and #-comments are ignored, so this file can
 # be fed straight to a script:
 #
-#     python scripts/ask_batch.py queries.txt            # answer each one
-#     python scripts/ask_batch.py --locate queries.txt   # locate only, no LLM
+#     python scripts/ask_batch.py eval/queries.txt            # answer each one
+#     python scripts/ask_batch.py --locate eval/queries.txt   # locate only, no LLM
 #
 # Groups 1-15 are organised to mirror the organ-system taxonomy in
 # config/organ_systems.yaml, so each group also exercises the portal's

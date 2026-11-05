@@ -14,6 +14,11 @@ Two modes, because they answer genuinely different questions:
   Find  -- "where is this in the books?"  No LLM, sub-second, returns
            positions rather than prose. Every result opens the real page.
 
+Ask takes voice as well as typing, in English or Hindi (app/voice_ui.py).
+A Hindi or Hinglish question is translated to English for retrieval; the
+checked English answer is shown in Hindi -- code-mixed, so drug names, doses
+and staging stay in English -- with the English beside it.
+
     streamlit run app/streamlit_app.py            # via the home page
     streamlit run app/views/oncology_reference.py # this page alone
 """
@@ -30,9 +35,21 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.voice_ui import (  # noqa: E402
+    Query,
+    bilingual,
+    language_picker,
+    read_input,
+    recording_indicator,
+    set_ui_lang,
+    show_question,
+    translated,
+    voice_available,
+)
 from rag.config import load_config  # noqa: E402
 from rag.locate import locate  # noqa: E402
 from rag.pipeline import answer_question, answer_question_stream  # noqa: E402
+from rag.sarvam import load_voice_config  # noqa: E402
 
 
 SAMPLE_QUESTIONS = [
@@ -89,7 +106,7 @@ def scope_selector():
         return None, "All sections"
 
     systems = [s for s in taxonomy["systems"] if s["pathologies"]]
-    labels = ["All sections (both books)"] + [
+    labels = ["All sections (all books)"] + [
         f"{s['label']}  ({sum(p['chunks'] for p in s['pathologies']):,})" for s in systems
     ]
     # Streamlit refuses to let a widget's session_state key be written once the
@@ -248,9 +265,12 @@ def render_sources(sources, key_prefix: str) -> None:
             )
 
 
-def render_answer(answer, show_trace: bool, key_prefix: str) -> None:
+def render_answer(answer, show_trace: bool, key_prefix: str, lang: str = "en-IN") -> None:
     if answer.status == "answered":
-        st.markdown(answer.text)
+        # Translated after the citation check, never before: the Hindi is a
+        # rendering of an answer that has already passed it.
+        bilingual(answer.text, translated(answer.text, lang, "clinician"), lang, key_prefix,
+                  voice="clinician")
         # No length banner: an over-long answer is trimmed at a sentence
         # boundary before it gets here, so there is nothing broken to warn
         # about and nothing for the reader to do.
@@ -282,20 +302,38 @@ def ask_mode(client, show_trace: bool, scope=None, scope_label="All sections") -
         st.session_state["history"] = []
 
     for i, turn in enumerate(st.session_state["history"]):
+        q: Query = turn["query"]
         with st.chat_message("user"):
-            st.write(turn["question"])
+            show_question(q)
         with st.chat_message("assistant"):
-            render_answer(turn["answer"], show_trace, f"h{i}")
+            render_answer(turn["answer"], show_trace, f"h{i}", q.lang)
 
     placeholder = (
         f"Ask about {scope_label}..." if scope else "Ask a question..."
     )
-    question = st.chat_input(placeholder) or st.session_state.pop("pending_q", None)
+    choice = st.session_state.get("ref_lang", "en-IN")
+    recording_indicator()
+    typed = st.chat_input(placeholder, accept_audio=voice_available())
+    pending = st.session_state.pop("pending_q", None)
+    if typed:
+        # "codemix": clinicians speak Hinglish -- Hindi sentences around
+        # English drug and procedure names -- and this mode transcribes the
+        # English words in Latin script instead of transliterating them.
+        q = read_input(typed, choice, load_voice_config()["clinician_languages"],
+                       "ref_lang", stt_mode="codemix")
+    elif pending and pending.isascii():
+        q = Query(pending, pending, "en-IN", choice)  # sample questions: no detection needed
+    elif pending:
+        q = read_input(pending, choice, load_voice_config()["clinician_languages"], "ref_lang")
+    else:
+        # Only an "Ask in हिन्दी" retry, if one is waiting.
+        q = read_input(None, choice, load_voice_config()["clinician_languages"], "ref_lang")
 
-    if question:
+    if q:
+        question = q.english
         key_prefix = f"h{len(st.session_state['history'])}"
         with st.chat_message("user"):
-            st.write(question)
+            show_question(q)
         with st.chat_message("assistant"):
             # Asking the same thing twice should not cost another 22 seconds.
             # Kept in session state rather than st.cache_data so the streaming
@@ -305,7 +343,7 @@ def ask_mode(client, show_trace: bool, scope=None, scope_label="All sections") -
             ckey = (question.strip().lower(), scope)
             answer = cache.get(ckey)
             if answer is not None:
-                render_answer(answer, show_trace, key_prefix)
+                render_answer(answer, show_trace, key_prefix, q.lang)
                 st.caption("↑ repeated question — served from this session's cache")
             else:
                 if load_config()["llm"].get("stream", True):
@@ -313,14 +351,14 @@ def ask_mode(client, show_trace: bool, scope=None, scope_label="All sections") -
                 else:
                     with st.spinner("Searching the textbooks..."):
                         answer = answer_question(question, client=client, scope=scope)
-                render_answer(answer, show_trace, key_prefix)
+                render_answer(answer, show_trace, key_prefix, q.lang)
                 # Only cache a real answer. Caching a refusal would make a
                 # transient backend failure look permanent for the session.
                 if answer.status in ("answered", "not_available", "out_of_scope"):
                     cache[ckey] = answer
                     if len(cache) > 64:
                         cache.pop(next(iter(cache)))
-        st.session_state["history"].append({"question": question, "answer": answer})
+        st.session_state["history"].append({"query": q, "answer": answer})
 
 
 def _stream_answer(question, client, scope=None):
@@ -449,9 +487,10 @@ def find_mode(scope=None, scope_label="All sections") -> None:
 
 
 def main() -> None:
+    set_ui_lang("en-IN")  # this page's own text is English only
     st.title(":material/menu_book: Knowledge Assistant")
     st.caption(
-        "Oncology reference from two indexed textbooks. **Ask** a question and every fact comes back cited, "
+        "Oncology reference from four indexed textbooks. **Ask** a question and every fact comes back cited, "
         "or say so if the books do not cover it. **Find** a topic and jump straight "
         "to the page it is on."
     )
@@ -501,13 +540,21 @@ def main() -> None:
                 st.session_state["pending_topic"] = t
                 st.session_state["mode"] = "Find a topic"
 
-    mode = st.radio(
-        "Mode",
-        ["Ask a question", "Find a topic"],
-        horizontal=True,
-        key="mode",
-        label_visibility="collapsed",
-    )
+    mode_col, lang_col = st.columns([3, 1], vertical_alignment="bottom")
+    with mode_col:
+        mode = st.radio(
+            "Mode",
+            ["Ask a question", "Find a topic"],
+            horizontal=True,
+            key="mode",
+            label_visibility="collapsed",
+        )
+    with lang_col:
+        # Speak or type in Hindi (or Hinglish); answers come in Hindi with
+        # the English beside them. Retrieval itself is always English.
+        st.session_state.setdefault("ref_lang", "en-IN")
+        language_picker(load_voice_config()["clinician_languages"], "ref_lang",
+                        allow_auto=False, label="Answer language")
 
     # An active filter has to be visible where the user is looking, not only
     # in the sidebar. A section left selected from an earlier question makes

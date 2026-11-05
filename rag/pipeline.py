@@ -39,7 +39,10 @@ class Source:
 class Answer:
     question: str
     text: str
-    status: str  # answered | not_available | out_of_scope | error
+    # answered | excerpts | not_available | out_of_scope | error | safety
+    # `excerpts` (Patient Portal only): the evidence is strong but the model
+    # could not produce a checked answer, so the guides' own passages are shown.
+    status: str
     sources: list[Source] = field(default_factory=list)
     cited: list[int] = field(default_factory=list)
     trace: dict[str, Any] = field(default_factory=dict)
@@ -48,13 +51,18 @@ class Answer:
     # the trace only: the trim is clean, so there is nothing for the user to
     # act on and no banner is shown.
     truncated: bool = False
+    # Patient Portal only: safety notices to show ABOVE the answer, each
+    # {"kind": crisis|emergency|personal_decision, "message", "guide"}.
+    alerts: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def is_answer(self) -> bool:
         return self.status == "answered"
 
 
-def _maybe_repair_citations(question, supporting, raw, verdict, client, trace):
+def _maybe_repair_citations(
+    question, supporting, raw, verdict, client, trace, corpus: str = "books"
+):
     """One bounded retry when the only fault is missing citation markers.
 
     A correct, fully-grounded answer with no `[n]` markers is discarded by
@@ -78,23 +86,109 @@ def _maybe_repair_citations(question, supporting, raw, verdict, client, trace):
     from rag.generate import build_prompt, build_repair_prompt
     from rag.llm import LLMClient, LLMError
 
+    audience = "patient" if corpus == "patient" else "clinician"
     client = client or LLMClient.from_config()
-    system, _ = build_prompt(question, supporting)
+    system, _ = build_prompt(question, supporting, audience)
     try:
         repaired = client.chat(
-            system, build_repair_prompt(question, supporting, raw)
+            system, build_repair_prompt(question, supporting, raw, audience)
         ).strip()
     except LLMError as exc:
         trace["citation_repair"] = {"attempted": True, "error": str(exc)}
         return raw, verdict
 
-    new_verdict = guard.verify_answer(repaired, len(supporting))
+    new_verdict = guard.verify_answer(repaired, len(supporting), corpus)
     trace["citation_repair"] = {
         "attempted": True,
         "recovered": new_verdict.allowed,
         "reason": new_verdict.reason,
     }
     return (repaired, new_verdict) if new_verdict.allowed else (raw, verdict)
+
+
+def _search_query(question: str, corpus: str) -> str:
+    """The text to search with. Patient Portal: everyday words get the guides'
+    own terms appended (config/patient.yaml `query_expansions`), so "tired"
+    also looks for "fatigue". Only retrieval sees this; the model and the
+    user see the question as asked."""
+    if corpus != "patient":
+        return question
+    import re
+
+    from rag.config import load_patient_config
+
+    extra = [
+        e["add"]
+        for e in load_patient_config().get("query_expansions", [])
+        if re.search(e["match"], question, flags=re.I)
+    ]
+    return f"{question} ({'; '.join(extra)})" if extra else question
+
+
+def _excerpt_fallback(corpus, supporting, trace, why):
+    """Patient Portal only: the guides' own passages when no answer can be written.
+
+    A 3B model sometimes abstains, drops its citations or times out although
+    retrieval found the page that answers the question. A patient is better
+    served by that page, verbatim and cited, than by "not available". Only
+    when the best passage clears a bar well above the grounding gate, so a
+    question the guides barely touch still ends in "not available".
+    """
+    if corpus != "patient" or not supporting:
+        return None
+    from rag.config import load_patient_config
+
+    cfg = load_patient_config()
+    gen = cfg["generation"]
+    floor = gen.get("excerpt_min_score")
+    if floor is None or max(h.score for h in supporting) < floor:
+        return None
+    trace["excerpt_fallback"] = why
+    return cfg["messages"]["excerpts"], _to_sources(supporting[: gen.get("excerpt_count", 3)])
+
+
+def _maybe_retry_sentinel(question, supporting, raw, verdict, client, trace, corpus):
+    """Patient Portal only: one retry when the model abstains on strong evidence.
+
+    A 3B model reads "Will I...?" as a question about the reader that the
+    guides cannot answer, and emits the not-available token with the answer
+    sitting in source [1]. When retrieval's best passage is far above the
+    grounding bar, ask once more, naming that passage. The result is held to
+    exactly the same citation check; if it still abstains, so does the answer.
+    """
+    if corpus != "patient" or verdict.allowed or "sentinel" not in verdict.reason:
+        return raw, verdict
+    from rag.config import load_patient_config
+
+    floor = load_patient_config()["generation"].get("sentinel_retry_min_score", 0)
+    top = max((h.score for h in supporting), default=float("-inf"))
+    if not floor or top < floor:
+        return raw, verdict
+
+    from rag.generate import build_prompt
+    from rag.llm import LLMClient, LLMError
+
+    client = client or LLMClient.from_config()
+    system, user = build_prompt(question, supporting, "patient")
+    nudge = (
+        "\n\nNote: these SOURCES do cover this topic -- source [1] is about it "
+        "directly. Answer the question from them in plain words, describing what "
+        "the guides say for people in general, with a citation on every sentence."
+    )
+    try:
+        retried = client.chat(system, user + nudge).strip()
+    except LLMError as exc:
+        trace["sentinel_retry"] = {"attempted": True, "error": str(exc)}
+        return raw, verdict
+    retried = _fit_answer(retried, trace, corpus)
+    new_verdict = guard.verify_answer(retried, len(supporting), corpus)
+    trace["sentinel_retry"] = {
+        "attempted": True,
+        "top_score": round(top, 3),
+        "recovered": new_verdict.allowed,
+        "reason": new_verdict.reason,
+    }
+    return (retried, new_verdict) if new_verdict.allowed else (raw, verdict)
 
 
 @lru_cache(maxsize=1)
@@ -119,7 +213,24 @@ def _pathology_label(pid: str | None) -> str:
     return _pathology_labels().get(pid or "", "")
 
 
-def _fit_answer(raw: str, trace: dict) -> str:
+@lru_cache(maxsize=1)
+def _guide_labels() -> dict[str, str]:
+    """guide id -> "Supportive care / Distress During Cancer Care"."""
+    from rag.config import load_patient_config
+
+    pcfg = load_patient_config()
+    return {
+        g["id"]: f"{pcfg['categories'][g['category']]} / {g['title']}" for g in pcfg["guides"]
+    }
+
+
+def _source_label(chunk: dict) -> str:
+    if chunk.get("tier") == "patient":
+        return _guide_labels().get(chunk.get("guide_id", ""), "")
+    return _pathology_label(chunk.get("pathology"))
+
+
+def _fit_answer(raw: str, trace: dict, corpus: str = "books") -> str:
     """Bring the answer inside the configured word budget, cleanly.
 
     Runs before verification so the text that is checked is the text that is
@@ -132,7 +243,12 @@ def _fit_answer(raw: str, trace: dict) -> str:
 
     from rag.config import load_config
 
-    budget = load_config()["llm"].get("max_answer_words", 0)
+    if corpus == "patient":
+        from rag.config import load_patient_config
+
+        budget = load_patient_config()["generation"]["max_answer_words"]
+    else:
+        budget = load_config()["llm"].get("max_answer_words", 0)
     before = len(raw.split())
     fitted, trimmed = fit_to_length(raw, budget)
     trace["length"] = {
@@ -144,7 +260,7 @@ def _fit_answer(raw: str, trace: dict) -> str:
     return fitted
 
 
-def _scoped_message(message: str, scope: str | None) -> str:
+def _scoped_message(message: str, scope: str | None, corpus: str = "books") -> str:
     """Say which section was searched when the answer was not found in it.
 
     Without this, restricting to "Prostate" and asking a tongue question
@@ -154,6 +270,11 @@ def _scoped_message(message: str, scope: str | None) -> str:
     """
     if not scope or scope == "all":
         return message
+    if corpus == "patient":
+        return (
+            f"{message.rstrip()} This search was limited to the guide or topic you "
+            "selected -- choose All guides to look across every NCCN patient guide."
+        )
     return (
         f"{message.rstrip()} This search was limited to the selected section, "
         "so the answer may exist elsewhere in the books -- switch the section "
@@ -179,14 +300,32 @@ def _to_sources(hits: list) -> list[Source]:
                 text=c["text"],
                 score=round(hit.score, 4),
                 tier=c.get("tier", ""),
-                pathology_label=_pathology_label(c.get("pathology")),
+                pathology_label=_source_label(c),
             )
         )
     return out
 
 
+def _safety_alerts(question: str, corpus: str, trace: dict):
+    """Run the patient safety screen. Returns (alerts, blocking_message)."""
+    if corpus != "patient":
+        return [], None
+    from rag.patient_safety import screen
+
+    result = screen(question)
+    trace["safety"] = {"kind": result.kind}
+    if result.kind is None:
+        return [], None
+    alert = {"kind": result.kind, "message": result.message, "guide": result.guide}
+    return [alert], (result.message if result.blocks_answer else None)
+
+
 def answer_question_stream(
-    question: str, client=None, on_delta=None, scope: str | None = None
+    question: str,
+    client=None,
+    on_delta=None,
+    scope: str | None = None,
+    corpus: str = "books",
 ) -> Answer:
     """Same contract as `answer_question`, but streams the draft as it arrives.
 
@@ -203,6 +342,7 @@ def answer_question_stream(
     """
     started = time.time()
     trace: dict[str, Any] = {}
+    alerts, blocking = _safety_alerts(question, corpus, trace)
 
     def finish(text: str, status: str, sources=None, cited=None) -> Answer:
         return Answer(
@@ -214,43 +354,50 @@ def answer_question_stream(
             trace=trace,
             elapsed_ms=int((time.time() - started) * 1000),
             truncated=bool(trace.get("length", {}).get("trimmed")),
+            alerts=alerts,
         )
+
+    if blocking:
+        return finish(blocking, "safety")
 
     from rag.retriever import get_retriever
 
-    retriever = get_retriever()
-    query_vec = retriever.embed_query(question)
+    retriever = get_retriever(corpus)
+    search_q = _search_query(question, corpus)
+    query_vec = retriever.embed_query(search_q)
 
-    topic = guard.topic_gate(question, query_vec)
+    topic = guard.topic_gate(question, query_vec, corpus)
     trace["topic_gate"] = {"allowed": topic.allowed, "reason": topic.reason, **(topic.detail or {})}
     if not topic.allowed:
         return finish(topic.message, "out_of_scope")
 
-    hits = retriever.search(question, query_vec, scope=scope)
+    hits = retriever.search(search_q, query_vec, scope=scope)
     trace["scope"] = scope or "all"
     trace["retrieved"] = [
         {"citation": h.citation, "score": round(h.score, 4), "tier": h.chunk.get("tier")}
         for h in hits
     ]
 
-    grounding = guard.grounding_gate(hits)
+    grounding = guard.grounding_gate(hits, corpus)
     trace["grounding_gate"] = {
         "allowed": grounding.allowed,
         "reason": grounding.reason,
         **(grounding.detail or {}),
     }
     if not grounding.allowed:
-        return finish(_scoped_message(grounding.message, scope), "not_available",
+        return finish(_scoped_message(grounding.message, scope, corpus), "not_available",
                       _to_sources(hits))
 
-    supporting = guard.filter_supporting(hits)
+    supporting = guard.filter_supporting(hits, corpus)
     sources = _to_sources(supporting)
 
     from rag.generate import build_prompt
     from rag.llm import LLMClient, LLMError
 
     client = client or LLMClient.from_config()
-    system, user = build_prompt(question, supporting)
+    system, user = build_prompt(
+        question, supporting, "patient" if corpus == "patient" else "clinician"
+    )
 
     parts: list[str] = []
     try:
@@ -260,22 +407,31 @@ def answer_question_stream(
                 on_delta("".join(parts), sources)
     except LLMError as exc:
         trace["llm_error"] = str(exc)
+        fb = _excerpt_fallback(corpus, supporting, trace, "llm_error")
+        if fb:
+            return finish(fb[0], "excerpts", fb[1])
         return finish(f"The language model backend is unavailable: {exc}", "error", sources)
 
     raw = "".join(parts).strip()
     trace["finish_reason"] = getattr(client, "last_finish_reason", None)
-    raw = _fit_answer(raw, trace)
+    raw = _fit_answer(raw, trace, corpus)
 
-    verdict = guard.verify_answer(raw, len(supporting))
+    verdict = guard.verify_answer(raw, len(supporting), corpus)
     trace["citation_check"] = {
         "allowed": verdict.allowed,
         "reason": verdict.reason,
         **(verdict.detail or {}),
     }
     raw, verdict = _maybe_repair_citations(
-        question, supporting, raw, verdict, client, trace
+        question, supporting, raw, verdict, client, trace, corpus
+    )
+    raw, verdict = _maybe_retry_sentinel(
+        question, supporting, raw, verdict, client, trace, corpus
     )
     if not verdict.allowed:
+        fb = _excerpt_fallback(corpus, supporting, trace, verdict.reason)
+        if fb:
+            return finish(fb[0], "excerpts", fb[1])
         return finish(verdict.message, "not_available", sources)
 
     cited = (verdict.detail or {}).get("cited", [])
@@ -283,9 +439,12 @@ def answer_question_stream(
     return finish(raw, "answered", used, cited)
 
 
-def answer_question(question: str, client=None, scope: str | None = None) -> Answer:
+def answer_question(
+    question: str, client=None, scope: str | None = None, corpus: str = "books"
+) -> Answer:
     started = time.time()
     trace: dict[str, Any] = {}
+    alerts, blocking = _safety_alerts(question, corpus, trace)
 
     def finish(text: str, status: str, sources=None, cited=None) -> Answer:
         return Answer(
@@ -297,21 +456,26 @@ def answer_question(question: str, client=None, scope: str | None = None) -> Ans
             trace=trace,
             elapsed_ms=int((time.time() - started) * 1000),
             truncated=bool(trace.get("length", {}).get("trimmed")),
+            alerts=alerts,
         )
+
+    if blocking:
+        return finish(blocking, "safety")
 
     from rag.retriever import get_retriever
 
-    retriever = get_retriever()
-    query_vec = retriever.embed_query(question)
+    retriever = get_retriever(corpus)
+    search_q = _search_query(question, corpus)
+    query_vec = retriever.embed_query(search_q)
 
-    # --- Layer 1: is this even a tongue-cancer question? -------------------
-    topic = guard.topic_gate(question, query_vec)
+    # --- Layer 1: is this even an in-scope question? -----------------------
+    topic = guard.topic_gate(question, query_vec, corpus)
     trace["topic_gate"] = {"allowed": topic.allowed, "reason": topic.reason, **(topic.detail or {})}
     if not topic.allowed:
         return finish(topic.message, "out_of_scope")
 
     # --- Retrieval ---------------------------------------------------------
-    hits = retriever.search(question, query_vec, scope=scope)
+    hits = retriever.search(search_q, query_vec, scope=scope)
     trace["scope"] = scope or "all"
     trace["retrieved"] = [
         {"citation": h.citation, "score": round(h.score, 4), "tier": h.chunk.get("tier")}
@@ -319,7 +483,7 @@ def answer_question(question: str, client=None, scope: str | None = None) -> Ans
     ]
 
     # --- Layer 2: did we actually find supporting text? --------------------
-    grounding = guard.grounding_gate(hits)
+    grounding = guard.grounding_gate(hits, corpus)
     trace["grounding_gate"] = {
         "allowed": grounding.allowed,
         "reason": grounding.reason,
@@ -330,10 +494,10 @@ def answer_question(question: str, client=None, scope: str | None = None) -> Ans
         # -- but attach what was retrieved anyway. The user asked an in-scope
         # question and deserves to see the closest passages the books do have,
         # clearly marked as rejected rather than presented as an answer.
-        return finish(_scoped_message(grounding.message, scope), "not_available",
+        return finish(_scoped_message(grounding.message, scope, corpus), "not_available",
                       _to_sources(hits))
 
-    supporting = guard.filter_supporting(hits)
+    supporting = guard.filter_supporting(hits, corpus)
     sources = _to_sources(supporting)
 
     # --- Generation --------------------------------------------------------
@@ -341,16 +505,22 @@ def answer_question(question: str, client=None, scope: str | None = None) -> Ans
     from rag.llm import LLMError
 
     try:
-        raw = generate(question, supporting, client=client)
+        raw = generate(
+            question, supporting, client=client,
+            audience="patient" if corpus == "patient" else "clinician",
+        )
         trace["finish_reason"] = getattr(client, "last_finish_reason", None)
     except LLMError as exc:
         trace["llm_error"] = str(exc)
+        fb = _excerpt_fallback(corpus, supporting, trace, "llm_error")
+        if fb:
+            return finish(fb[0], "excerpts", fb[1])
         return finish(f"The language model backend is unavailable: {exc}", "error", sources)
 
-    raw = _fit_answer(raw, trace)
+    raw = _fit_answer(raw, trace, corpus)
 
     # --- Layer 3: is the answer really tied to those sources? --------------
-    verdict = guard.verify_answer(raw, len(supporting))
+    verdict = guard.verify_answer(raw, len(supporting), corpus)
     trace["citation_check"] = {
         "allowed": verdict.allowed,
         "reason": verdict.reason,
@@ -358,12 +528,19 @@ def answer_question(question: str, client=None, scope: str | None = None) -> Ans
     }
 
     raw, verdict = _maybe_repair_citations(
-        question, supporting, raw, verdict, client, trace
+        question, supporting, raw, verdict, client, trace, corpus
+    )
+    raw, verdict = _maybe_retry_sentinel(
+        question, supporting, raw, verdict, client, trace, corpus
     )
 
     if not verdict.allowed:
         # The model either abstained or produced something unverifiable.
-        # Either way the user gets the honest answer, not the model's text.
+        # Either way the user gets the honest answer, not the model's text --
+        # for a patient, the guides' own passages when the evidence is strong.
+        fb = _excerpt_fallback(corpus, supporting, trace, verdict.reason)
+        if fb:
+            return finish(fb[0], "excerpts", fb[1])
         return finish(verdict.message, "not_available", sources)
 
     cited = (verdict.detail or {}).get("cited", [])
