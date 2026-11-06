@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" font-family="Liberation Sans, Arial, Helvetica, sans-serif">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E3F8F2"/><stop offset="0.6" stop-color="#F6FBFB"/><stop offset="1" stop-color="#E6EEFD"/></linearGradient><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#0F766E"/></marker><marker id="as" markerWidth="7" markerHeight="7" refX="1" refY="3.5" orient="auto"><path d="M7,0 L0,3.5 L7,7 z" fill="#0F766E"/></marker></defs>
+<rect width="1200" height="900" fill="url(#bg)"/>
+<text x="600" y="46" font-size="28" font-weight="700" fill="#0F766E" text-anchor="middle">Solution architecture</text>
+<rect x="200" y="70" width="800" height="64" rx="14" fill="#fff" stroke="#9ED6CC" stroke-width="2"/>
+<text x="600" y="98" font-size="19" font-weight="700" fill="#12302E" text-anchor="middle">Doctor or patient</text>
+<text x="600" y="122" font-size="15.5" font-weight="400" fill="#4B6663" text-anchor="middle">on a computer or a phone · type, or speak (up to 30 s) in 11 Indian languages</text>
+<line x1="600" y1="134" x2="600" y2="162" stroke="#0F766E" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="40" y="164" width="1120" height="112" rx="16" fill="#fff" stroke="#0F766E" stroke-width="2.5"/>
+<text x="60" y="194" font-size="19" font-weight="700" fill="#0F766E" text-anchor="start">Streamlit portal</text>
+<text x="215" y="194" font-size="15.5" font-weight="400" fill="#4B6663" text-anchor="start">HTTPS :8501 · reachable from anywhere through a Tailscale Funnel link</text>
+<rect x="58" y="214" width="189.4" height="40" rx="20" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="152.7" y="240" font-size="15.5" font-weight="600" fill="#12302E" text-anchor="middle">Knowledge Assistant</text>
+<rect x="257.4" y="214" width="180.79999999999998" height="40" rx="20" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="347.79999999999995" y="240" font-size="15.5" font-weight="600" fill="#12302E" text-anchor="middle">Treatment Guidance</text>
+<rect x="448.19999999999993" y="214" width="146.39999999999998" height="40" rx="20" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="521.3999999999999" y="240" font-size="15.5" font-weight="600" fill="#12302E" text-anchor="middle">Patient Portal</text>
+<rect x="604.5999999999999" y="214" width="146.39999999999998" height="40" rx="20" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="677.8" y="240" font-size="15.5" font-weight="600" fill="#12302E" text-anchor="middle">Content Studio</text>
+<rect x="760.9999999999999" y="214" width="172.2" height="40" rx="20" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="847.0999999999999" y="240" font-size="15.5" font-weight="600" fill="#12302E" text-anchor="middle">Research Platform</text>
+<rect x="943.1999999999998" y="214" width="60.4" height="40" rx="20" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="973.3999999999999" y="240" font-size="15.5" font-weight="600" fill="#12302E" text-anchor="middle">Home</text>
+<line x1="200" y1="276" x2="200" y2="306" stroke="#0F766E" stroke-width="2.5" marker-end="url(#a)"/>
+<line x1="600" y1="276" x2="600" y2="306" stroke="#0F766E" stroke-width="2.5" marker-end="url(#a)"/>
+<line x1="1000" y1="276" x2="1000" y2="306" stroke="#0F766E" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="40" y="306" width="320" height="372" rx="16" fill="#fff" stroke="#C9B8F5" stroke-width="2.5"/>
+<text x="60" y="338" font-size="19" font-weight="700" fill="#5B3FC4" text-anchor="start">Voice and language</text>
+<text x="60" y="360" font-size="14.5" font-weight="600" fill="#4B6663" text-anchor="start">online · Sarvam AI</text>
+<rect x="58" y="384" width="284" height="60" rx="12" fill="#F4F0FE" stroke="#D9CEF8" stroke-width="1.5"/>
+<text x="72" y="409" font-size="16.5" font-weight="700" fill="#12302E" text-anchor="start">Speech to text</text>
+<text x="72" y="431" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="start">saaras:v4, language auto-detected</text>
+<rect x="58" y="454" width="284" height="60" rx="12" fill="#F4F0FE" stroke="#D9CEF8" stroke-width="1.5"/>
+<text x="72" y="479" font-size="16.5" font-weight="700" fill="#12302E" text-anchor="start">Translate</text>
+<text x="72" y="501" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="start">into English, and the answer back</text>
+<rect x="58" y="524" width="284" height="60" rx="12" fill="#F4F0FE" stroke="#D9CEF8" stroke-width="1.5"/>
+<text x="72" y="549" font-size="16.5" font-weight="700" fill="#12302E" text-anchor="start">Read aloud</text>
+<text x="72" y="571" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="start">bulbul voices, on request</text>
+<rect x="58" y="594" width="284" height="60" rx="12" fill="#F4F0FE" stroke="#D9CEF8" stroke-width="1.5"/>
+<text x="72" y="619" font-size="16.5" font-weight="700" fill="#12302E" text-anchor="start">Saves credits</text>
+<text x="72" y="641" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="start">spare keys, daily cap, disk cache</text>
+<rect x="390" y="306" width="420" height="372" rx="16" fill="#fff" stroke="#0F766E" stroke-width="2.5"/>
+<text x="410" y="338" font-size="19" font-weight="700" fill="#0F766E" text-anchor="start">Answer pipeline</text>
+<text x="410" y="360" font-size="14.5" font-weight="600" fill="#4B6663" text-anchor="start">runs on this machine</text>
+<rect x="408" y="374" width="384" height="48" rx="12" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="422" y="395" font-size="16" font-weight="700" fill="#12302E" text-anchor="start">1  Safety screen</text>
+<text x="422" y="414" font-size="13.5" font-weight="400" fill="#4B6663" text-anchor="start">crisis and emergency wording first</text>
+<rect x="408" y="428" width="384" height="48" rx="12" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="422" y="449" font-size="16" font-weight="700" fill="#12302E" text-anchor="start">2  Hybrid retrieval</text>
+<text x="422" y="468" font-size="13.5" font-weight="400" fill="#4B6663" text-anchor="start">BM25 + FAISS vectors + reranker</text>
+<rect x="408" y="482" width="384" height="48" rx="12" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="422" y="503" font-size="16" font-weight="700" fill="#12302E" text-anchor="start">3  Grounding gate</text>
+<text x="422" y="522" font-size="13.5" font-weight="400" fill="#4B6663" text-anchor="start">refuses when sources do not cover it</text>
+<rect x="408" y="536" width="384" height="48" rx="12" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="422" y="557" font-size="16" font-weight="700" fill="#12302E" text-anchor="start">4  Write the answer</text>
+<text x="422" y="576" font-size="13.5" font-weight="400" fill="#4B6663" text-anchor="start">local Qwen, only from what was found</text>
+<rect x="408" y="590" width="384" height="48" rx="12" fill="#E6F5F2" stroke="#9ED6CC" stroke-width="1.5"/>
+<text x="422" y="611" font-size="16" font-weight="700" fill="#12302E" text-anchor="start">5  Citation check</text>
+<text x="422" y="630" font-size="13.5" font-weight="400" fill="#4B6663" text-anchor="start">every [n] must match a real passage</text>
+<text x="600" y="658" font-size="15.5" font-weight="700" fill="#0F766E" text-anchor="middle">cited answer, or an honest “not available”</text>
+<rect x="840" y="306" width="320" height="372" rx="16" fill="#fff" stroke="#F2B27A" stroke-width="2.5"/>
+<text x="860" y="338" font-size="19" font-weight="700" fill="#C2570C" text-anchor="start">Local model server</text>
+<text x="860" y="360" font-size="14.5" font-weight="600" fill="#4B6663" text-anchor="start">llama.cpp router · :8000 · CPU only</text>
+<rect x="858" y="384" width="284" height="66" rx="12" fill="#FFF3E8" stroke="#F7D3B0" stroke-width="1.5"/>
+<text x="872" y="412" font-size="17.5" font-weight="700" fill="#12302E" text-anchor="start">Qwen2.5-3B</text>
+<text x="872" y="436" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="start">answers questions</text>
+<rect x="858" y="462" width="284" height="66" rx="12" fill="#FFF3E8" stroke="#F7D3B0" stroke-width="1.5"/>
+<text x="872" y="490" font-size="17.5" font-weight="700" fill="#12302E" text-anchor="start">Qwen3.5-4B</text>
+<text x="872" y="514" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="start">writes articles</text>
+<rect x="858" y="546" width="284" height="110" rx="12" fill="#fff" stroke="#F7D3B0" stroke-width="1.5" stroke-dasharray="6 5"/>
+<text x="872" y="574" font-size="15" font-weight="700" fill="#12302E" text-anchor="start">One model in memory at a time</text>
+<text x="872" y="598" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="start">swaps in about 10 s</text>
+<text x="872" y="620" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="start">stock weights: nothing is</text>
+<text x="872" y="640" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="start">trained or fine-tuned</text>
+<line x1="360" y1="420" x2="390" y2="420" stroke="#7A5AE0" stroke-width="2.5" marker-end="url(#a)" marker-start="url(#as)"/>
+<line x1="810" y1="420" x2="840" y2="420" stroke="#E07A1F" stroke-width="2.5" marker-end="url(#a)" marker-start="url(#as)"/>
+<line x1="810" y1="534" x2="840" y2="534" stroke="#E07A1F" stroke-width="2.5" marker-end="url(#a)" marker-start="url(#as)"/>
+<line x1="600" y1="678" x2="600" y2="716" stroke="#0F766E" stroke-width="2.5" marker-end="url(#a)"/>
+<text x="40" y="712" font-size="17" font-weight="700" fill="#0F766E" text-anchor="start">Knowledge, indexed on this machine</text>
+<rect x="40" y="726" width="262" height="86" rx="14" fill="#fff" stroke="#0F766E" stroke-width="2"/>
+<text x="58" y="759" font-size="17.5" font-weight="700" fill="#12302E" text-anchor="start">4 oncology textbooks</text>
+<text x="58" y="787" font-size="15" font-weight="400" fill="#4B6663" text-anchor="start">19,949 passages</text>
+<rect x="316" y="726" width="262" height="86" rx="14" fill="#fff" stroke="#0F766E" stroke-width="2"/>
+<text x="334" y="759" font-size="17.5" font-weight="700" fill="#12302E" text-anchor="start">19 ASCO guidelines</text>
+<text x="334" y="787" font-size="15" font-weight="400" fill="#4B6663" text-anchor="start">443 recommendations</text>
+<rect x="592" y="726" width="262" height="86" rx="14" fill="#fff" stroke="#0F766E" stroke-width="2"/>
+<text x="610" y="759" font-size="17.5" font-weight="700" fill="#12302E" text-anchor="start">76 NCCN patient guides</text>
+<text x="610" y="787" font-size="15" font-weight="400" fill="#4B6663" text-anchor="start">6,267 passages</text>
+<rect x="868" y="726" width="292" height="86" rx="14" fill="#EEF4FF" stroke="#9DB7F2" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="886" y="759" font-size="17.5" font-weight="700" fill="#12302E" text-anchor="start">scite.ai (online)</text>
+<text x="886" y="787" font-size="15" font-weight="400" fill="#4B6663" text-anchor="start">Research Platform: papers</text>
+<path d="M1160,769 L1184,769 L1184,232 L1162,232" fill="none" stroke="#4C6FE0" stroke-width="2.5" stroke-dasharray="6 5" marker-end="url(#a)"/>
+<text transform="rotate(-90 1176 500)" x="1176" y="500" font-size="13.5" font-weight="400" fill="#4B6663" text-anchor="start">questions only</text>
+<text x="600" y="860" font-size="14.5" font-weight="400" fill="#4B6663" text-anchor="middle">Green and orange stay on this computer. Only voice and translation (purple) and literature search (blue, dashed) go online.</text>
+</svg>

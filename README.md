@@ -7,12 +7,20 @@
 Six tools · four textbooks · 19 ASCO guidelines · 76 NCCN patient guides · 11 Indian languages
 **One CPU-only machine. No GPU. No training. No uncited claims.**
 
-<img src="docs/images/home.png" alt="The home page: a launcher, live status badges and one card per tool" width="900">
+### 🌐 Try it live: **[v.taila0f4fa.ts.net](https://v.taila0f4fa.ts.net)**
+
+<sub>Served from the project machine through a Tailscale Funnel, so the link works whenever that machine is on.
+Voice and the Patient Portal's other-language answers need the machine's Sarvam credit.</sub>
+
+<br>
+
+<img src="docs/images/home.png" alt="The home page: a launcher, live status badges and one card per tool" width="100%">
 
 </div>
 
-> **Status:** research prototype for a hackathon. Decision support and
-> education only, not medical advice. See [Scope and limitations](#scope-and-limitations).
+**Contents:** [What it does](#what-it-does) · [Architecture](#solution-architecture) · [Quick start](#quick-start) ·
+[Configuration](#configuration) · [How it works](#how-it-works) · [Results](#results) ·
+[Documentation](#documentation) · [Testing](#testing) · [Privacy](#privacy-what-stays-here-and-what-leaves)
 
 ## Why this exists
 
@@ -39,74 +47,91 @@ So this one is built around three promises:
 **Nothing is trained or fine-tuned.** All medical knowledge comes from the
 indexed sources, which is why every answer can be traced back to one.
 
-## See it working
+## What it does
 
-<table>
-<tr>
-<td width="50%" valign="top">
-<b>📚 Knowledge Assistant</b><br>
-Ask the textbooks. Each claim carries a <code>[n]</code> marker that opens the book, chapter and page.<br><br>
-<img src="docs/images/knowledge-assistant.png" alt="A cited answer about cisplatin side effects, with sources listed below">
-</td>
-<td width="50%" valign="top">
-<b>🧭 Treatment Guidance</b><br>
-Describe a case. Get the matching ASCO recommendations, ranked, with strength and evidence quality, quoted and never generated.<br><br>
-<img src="docs/images/treatment-guidance.png" alt="Treatment Guidance ranking ASCO recommendations for an EGFR lung cancer case">
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-<b>🩺 Patient Portal</b><br>
-Plain-language answers from the NCCN patient guides, with the page they came from. Speak or type in your own language.<br><br>
-<img src="docs/images/patient-portal.png" alt="A patient asking a question and getting a cited answer">
-</td>
-<td width="50%" valign="top">
-<b>📖 Learn mode</b><br>
-Pick any of the 76 guides to read its common questions, key points and glossary. Search works in any language.<br><br>
-<img src="docs/images/patient-learn.png" alt="Learn mode listing the guides by topic">
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-<b>✍️ Content Studio</b><br>
-Turn a short brief into a blog post or patient handout, after a few clarifying questions.<br><br>
-<img src="docs/images/content-studio.png" alt="Content Studio's first step: topic, brief and kind of piece">
-</td>
-<td width="50%" valign="top" align="center">
-<b>📱 Works on a phone</b><br>
-The top bar folds into a menu, cards stack, and the microphone sits in the chat box.<br><br>
-<img src="docs/images/phone-home.png" alt="The home page on a phone" width="46%">
-<img src="docs/images/phone-patient.png" alt="The Patient Portal on a phone" width="46%">
-</td>
-</tr>
-</table>
+### 📚 Ask the textbooks, get an answer you can check
 
-<sub>Screenshots are of the light theme, which is the default. A sun/moon button at top right
-switches to dark. Captured against the running app with the voice service mocked,
-so no credits were spent.</sub>
+Type a clinical question and every fact in the answer carries a marker that opens the book, chapter and
+page it came from. The answer is built only from passages the search actually found, and every marker is
+checked against them before you see it. If the four textbooks (DeVita, Gunderson, MD Anderson, Oncologic
+Imaging) don't cover the question, you get "not available" instead of a guess. A second mode, *Find a
+topic*, lists where a subject is discussed, book by book and page by page, with no model involved.
 
-## The six tools at a glance
+<img src="docs/images/knowledge-assistant.png" alt="A cited answer about cisplatin side effects, with the book, chapter and page of each source listed below" width="100%">
 
-| | tool | you give it | you get back |
-|---|---|---|---|
-| 📚 | **Knowledge Assistant** | a clinical question, typed or spoken | a cited answer from four textbooks, or an honest refusal |
-| 🧭 | **Treatment Guidance** | a case in a sentence | ranked ASCO recommendations with the trial figures the guideline prints |
-| 🩺 | **Patient Portal** | a question in 1 of 11 languages | a plain answer in that language and English, read-aloud on request |
-| ✍️ | **Content Studio** | a short brief | a draft blog post or handout to review |
-| 🧪 | **Research Platform** | a research question | a summary of published papers via scite.ai |
-| 🏠 | **Home** | a few words | the right tool, already working on it |
+### 🧭 Describe a case, see the guideline recommendations that fit
 
-A fuller description of the product, its results and its limits is in
-**[docs/product.txt](docs/product.txt)**.
+Write the case in a sentence ("Stage IV NSCLC with EGFR L858R, progressed on osimertinib") or pick a cancer
+and answer two or three questions. The tool reads the case, then ranks the matching recommendations from 19
+ASCO guidelines, showing each one's strength, evidence quality and why it fits. Recommendations and trial
+figures are quoted from the guideline, never generated. When the guidelines have nothing for the case, it
+searches the textbooks and labels the answer as coming from the books.
 
-**Contents:** [See it working](#see-it-working) · [The tools](#the-tools) · [Quick start](#quick-start) ·
-[Configuration](#configuration) · [How it works](#how-it-works) ·
-[Results](#results) · [Repository layout](#repository-layout) ·
-[Documentation](#documentation) · [Testing](#testing) ·
-[Reproducing from scratch](#reproducing-this-from-scratch) ·
-[Privacy](#privacy-what-stays-here-and-what-leaves) ·
-[Sharing it](#sharing-it-with-other-people) ·
-[Scope and limitations](#scope-and-limitations)
+<img src="docs/images/treatment-guidance.png" alt="Treatment Guidance ranking ASCO recommendations for an EGFR lung cancer case, with strength and evidence badges and a fit bar" width="100%">
+
+### 🩺 A patient portal that speaks the patient's language
+
+Patients and families ask in plain words, by voice or typing, in any of 11 Indian languages. The question is
+translated to English and answered from the 76 NCCN Guidelines for Patients, and the reply comes back in the
+patient's language and in English, with a Listen button. A safety screen runs first, so wording that points to
+a crisis or an emergency gets a safe response before any answer. The recording is capped at 30 seconds, and a
+glowing indicator shows when the microphone is live.
+
+<img src="docs/images/patient-portal.png" alt="A patient asking about radiation therapy and receiving a cited plain-language answer" width="100%">
+
+### 📖 Learn mode: read the guides, not just ask
+
+Pick any of the 76 guides to read its common questions, key points, questions to ask your doctor, and a glossary.
+The search box accepts words in any supported language and translates them first, so a word typed in Bengali
+still finds the right guide.
+
+<img src="docs/images/patient-learn.png" alt="Learn mode listing the NCCN guides by topic, with a search box" width="100%">
+
+### ✍️ Content Studio: from a short brief to a draft
+
+Describe the piece you want, answer a few clarifying questions, and get a draft blog post or patient handout
+to review, edit and publish. It uses a separate writer model, which is swapped in only while you use it.
+
+<img src="docs/images/content-studio.png" alt="Content Studio's first step: topic, description and kind of piece" width="100%">
+
+### 🧪 Research Platform and a home page that gets you started
+
+The Research Platform sends a question to scite.ai, then summarises the returned papers locally with numbered
+citations. The home page has a launcher: pick a task, type or choose an example, and you land in that tool with
+the work already started.
+
+### 📱 Built for phones too
+
+The top bar folds into a menu, the launcher and status badges reflow to the screen width, and the microphone sits
+right in the chat box, so a patient can ask by voice from a phone browser.
+
+<p align="center">
+<img src="docs/images/phone-home.png" alt="The home page on a phone" width="320">
+&nbsp;&nbsp;&nbsp;
+<img src="docs/images/phone-patient.png" alt="The Patient Portal answering a question on a phone" width="320">
+</p>
+
+<sub>Screenshots show the light theme, which is the default; a sun/moon button at top right switches to dark.
+They were captured against the running app with the voice service mocked, so no credits were spent.</sub>
+
+## Solution architecture
+
+<img src="docs/images/architecture.png" alt="Solution architecture: browser, Streamlit portal, voice and language service, answer pipeline, local model server and the indexed knowledge" width="100%">
+
+1. **The portal.** A Streamlit app serves all six tools over HTTPS. The same page works on a desktop and a phone,
+   and a Tailscale Funnel gives it a public address.
+2. **Voice and language (online).** Speech is transcribed, translated to English, and the answer is translated
+   back and read aloud by Sarvam AI. Spare keys, a daily spending cap and a disk cache keep the credit use small.
+3. **The answer pipeline (local).** The question first goes through a safety screen. A hybrid search (keyword and
+   vector, then a reranker) finds passages in the indexed sources. A grounding gate refuses to answer if the
+   passages don't cover the question. The model then writes only from what was found, and a citation check
+   verifies every `[n]` marker before anything is shown.
+4. **The model server (local).** llama.cpp serves stock Qwen weights on the CPU, one model in memory at a time:
+   a 3B model for questions and a 4B model for writing. Nothing is trained or fine-tuned.
+5. **The knowledge.** Four textbooks (19,949 passages), 19 ASCO guidelines (443 recommendations) and 76 NCCN
+   patient guides (6,267 passages) are indexed on the machine. Only the Research Platform's questions go to scite.ai.
+
+More detail is in **[docs/architecture.md](docs/architecture.md)** and **[docs/product.txt](docs/product.txt)**.
 
 ## The tools
 
@@ -371,59 +396,6 @@ python scripts/eval_questions.py --build-only  # rebuild the sheet, no model cal
 
 ---
 
-## Repository layout
-
-```
-app/          Streamlit portal (view layer only)
-  streamlit_app.py   entrypoint: top navigation, theme, light/dark button
-  ui_theme.py        the look: aurora backdrop, frosted glass, gradient accents
-  voice_ui.py        voice and language widgets shared by two pages
-  views/             one file per page: home, oncology_reference (Knowledge
-                     Assistant), content_studio, research_platform,
-                     treatment_guidance, patient_portal
-rag/          the library, book-agnostic: retriever, guard, generate, pipeline,
-              locate, pdfview, llm, config, scite (Scite clients), sarvam
-              (voice and translation), keyring (several API keys, in order),
-              patient_safety, guidance + guidance_lexicon
-writer/       Content Studio logic: brief, questions, prompt, tidy-up
-config/       books.yaml, rag.yaml, organ_systems.yaml, models.ini, writer.yaml,
-              patient.yaml, patient_guides.yaml, asco_guidelines.yaml, voice.yaml
-scripts/      00-06 textbook pipeline, 07-08 Patient Portal build and
-              evaluation, 09-10 Treatment Guidance, 11-12 voice check and
-              usage report; smoke_test, ui_test, ask_batch, eval_questions,
-              run_all.sh, serve_llm.sh
-eval/         labelled question sets (tracked) and generated reports (ignored);
-              queries.txt holds 100 example queries by organ system
-test/         clinical question set (.docx) and its results sheet (.xlsx)
-docs/         design notes and measurements, product.txt, conversation.txt
-.streamlit/   config.toml, the portal theme
-start, stop   run and stop the platform
-.env.example  template for .env (the real .env is gitignored)
-
-not in the repository (gitignored): data/ and sources/ (the PDFs), corpus/ and
-artifacts/ (text extracted from them, the indexes, the voice cache), models/
-(multi-GB weights), logs/, certs/, .env, sarvam_api_usage.txt
-```
-
-| module | what it does |
-|---|---|
-| `rag/retriever.py` | hybrid search + rerank, and scoped search per pathology |
-| `rag/guard.py` | the three refusal layers |
-| `rag/generate.py` | prompt construction and answer-length fitting |
-| `rag/pipeline.py` | `answer_question()` — the only entry point the UI needs |
-| `rag/locate.py` | the topic locator (Find mode) |
-| `rag/pdfview.py` | renders source PDF pages for "Go to section" |
-| `rag/patient_safety.py` | the Patient Portal's pre-retrieval safety screen (crisis, emergency, personal treatment decisions) |
-| `rag/sarvam.py` | voice and languages: speech to text, language detection, translation with citations kept in place, read-aloud; disk cache, usage log, daily budget, offline mock |
-| `app/ui_theme.py` | the shared look: aurora backdrop, frosted glass, gradient buttons, focus rings; pages restyle themselves by overriding a few CSS variables |
-| `rag/keyring.py` | several API keys per service, tried in order; a key refused for credit or quota is skipped from then on |
-| `app/voice_ui.py` | the Streamlit side of voice: language picker, microphone input, rotating language line, answers in both languages, Listen buttons |
-| `rag/guidance.py` | Treatment Guidance: reads a case, ranks ASCO recommendations against it, with reasons |
-| `rag/guidance_lexicon.py` | the shared case vocabulary (biomarkers, settings, drugs, drug classes) used by the parser and the case reader |
-| `writer/studio.py` | the Content Studio: follow-up questions, article prompt, streaming, tidy-up |
-
----
-
 ## Documentation
 
 | | |
@@ -674,149 +646,6 @@ Tamil (against the offline Sarvam mock, so no credits are spent).
 
 ---
 
-## Reproducing this from scratch
-
-Everything except the books is in this repository. The pipeline is
-deterministic up to the embedding step, so with the same two PDFs you should
-land on the same corpus, the same chunk count, and the same retrieval numbers.
-
-### 1. Environment
-
-```bash
-git clone <this repo> && cd <repo>
-python3 -m venv .venv && source .venv/bin/activate
-
-# torch must come from the CPU index -- the default wheel pulls ~2.5 GB of
-# unusable CUDA libraries on a machine with no GPU.
-pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt
-```
-
-Linux x86-64, Python 3.12, ~8 GB RAM, ~7 GB free disk. No GPU and no C
-compiler: the generator is a prebuilt llama.cpp binary, chosen precisely
-because the target machine had neither.
-
-### 2. Supply the books
-
-Put your own copies in `data/`. They are not distributed here.
-
-| book | edition used | file size | pages |
-|---|---|---|---|
-| DeVita, Hellman & Rosenberg's *Cancer: Principles & Practice of Oncology* | 11th | 54.3 MB | 4,360 |
-| Gunderson & Tepper's *Clinical Radiation Oncology* | — | 309.9 MB | 2,300 |
-| *The MD Anderson Surgical Oncology Handbook* | — | 25.3 MB | 1,160 |
-| *Oncologic Imaging: A Multidisciplinary Approach* | — | 77.7 MB | 865 |
-
-Then set the filenames and page counts in `config/books.yaml`.
-
-For the Patient Portal, download the **NCCN Guidelines for Patients** from
-[nccn.org](https://www.nccn.org/patientresources/patient-resources/guidelines-for-patients)
-into `data/nccn/`, one folder per topic area as listed in
-`config/patient_guides.yaml` (76 guides, 2023–2026 editions).
-
-**Page counts must match your PDF exactly.** They are how the pipeline
-converts a chapter into a page range. If your copy has a different front
-matter or a different scan, the counts differ and so will everything
-downstream.
-
-### 3. Build
-
-```bash
-bash scripts/run_all.sh
-```
-
-That runs all six stages, downloading the models in a parallel lane. Roughly
-90 minutes on a 6-core CPU, of which ~75 is embedding. To run them
-individually:
-
-| stage | command | output | time |
-|---|---|---|---|
-| 0 | `bash scripts/00_fetch_models.sh` | `models/` — llama.cpp binary, GGUF, encoders | ~5 min (2.8 GB download) |
-| 1 | `python scripts/01_extract_corpus.py --workers 12` | `corpus/books/sections/*.md` | ~50 s |
-| 2 | `python scripts/02_build_chunks.py --workers 12` | `corpus/books/chunks.jsonl` | ~30 s |
-| 3 | `python scripts/03_build_index.py` | `artifacts/index/` — FAISS, BM25, centroid | **~75 min** from scratch; only new chunks when an index exists |
-| 5 | `python scripts/05_tag_pathologies.py --write-corpora` | organ-system tags, `taxonomy.json` | ~3 s |
-| 4 | `python scripts/04_evaluate.py --apply` | `eval/report.md`, calibrated thresholds | ~1 min |
-| 6 | `python scripts/06_eval_coverage.py --scoped` | `eval/coverage_report.md` | ~1 min |
-
-Stage 5 runs before stage 4 on purpose: tagging is metadata only and must
-never re-embed, and stage 4 needs the finished index to calibrate against.
-
-The Patient Portal has its own two stages and its own index:
-
-| stage | command | output | time |
-|---|---|---|---|
-| 7 | `python scripts/07_build_patient_corpus.py` | `corpus/patient/` — sections, `library.json`, chunks | ~20 s (12 workers) |
-| 3 | `python scripts/03_build_index.py --chunks corpus/patient/chunks.jsonl --out-dir artifacts/index_patient` | `artifacts/index_patient/` | ~30 min |
-| 8 | `python scripts/08_eval_patient.py --apply` | `eval/patient_report.md`, calibrated threshold | ~1 min |
-
-### 4. Check you got the same thing
-
-If your PDFs match the editions above, these should match too:
-
-| checkpoint | expected | where to look |
-|---|---|---|
-| Pages read | 4,360 + 2,300 + 1,160 + 865 (8,685) | `corpus/books/corpus_report.md` |
-| Pages kept | 2,890 + 1,719 + 1,008 + 719 | same |
-| Sections | **11,716** | same, and `ls corpus/books/sections \| wc -l` |
-| Corpus size | ~19.7 M characters | same |
-| Chunks | **19,949** | stage 2 output, `artifacts/index/index_meta.json` |
-| Corpus fingerprint | `d9afb12098647b82` | `index_meta.json` |
-| Taxonomy | 14 systems, 78 pathologies | `artifacts/index/taxonomy.json` |
-| Recall@5 | **96%** (24/25) | `eval/report.md` |
-| Organ-system coverage | **38/38** in top-5 | `eval/coverage_report.md` |
-| Calibrated `min_rerank_score` | 0.30 | written into `config/rag.yaml` |
-
-`corpus_fingerprint` is a hash of the chunk ids. **If it matches, stages 1-2
-reproduced exactly** — different PDFs, or an edited `books.yaml`, will change
-it.
-
-### 5. Verify and run
-
-```bash
-python scripts/smoke_test.py         # 124 checks, stubbed model — no GPU needed
-python scripts/ui_test.py --no-llm   # the UI checks that need no model
-./start                              # https://localhost:8501
-```
-
-`smoke_test.py` exercises all three refusal layers against a stub, so the
-guarantee can be checked without a generator at all.
-
-### What is and is not deterministic
-
-- **Stages 1-2 are exactly reproducible.** The parallel rewrite of stage 1 was
-  verified to reproduce the previous single-threaded corpus byte for byte, and
-  stage 2 re-sorts by section id so worker count cannot change the output.
-- **Stage 3 is reproducible on the same hardware and library versions.**
-  Embeddings are a deterministic function of the model and the text, but
-  floating-point reduction order can differ across BLAS builds, so a different
-  machine may produce vectors that differ in the last decimal. Ranking is
-  unaffected in practice.
-- **Generation is not deterministic.** It is sampled at temperature 0.1, so
-  answers vary slightly between runs and the end-to-end bucket scores move by
-  a question or two. Retrieval metrics (Recall@k, coverage) do not — those
-  involve no model sampling and should reproduce exactly.
-
-### Using different books
-
-The pipeline is not hard-wired to these four titles, but three files carry
-edition-specific knowledge and will need revisiting:
-
-- **`config/books.yaml`** — page counts, exclude windows (back-of-book index,
-  front matter), the DeVita watermark pattern, and Gunderson's running-header
-  regexes. Chapter boundaries are read from each PDF's embedded outline, so
-  that part adapts on its own; the hand-written `chapter_map` is the fallback
-  for a PDF with no usable outline (*Oncologic Imaging* needs it, with
-  `use_pdf_outline: false`).
-- **`config/organ_systems.yaml`** — maps chapter *numbers* to pathologies.
-  Different books, different numbering.
-- **`eval/questions.yaml`** — the `expect_pages` ground truth is PDF page
-  numbers in these exact editions. Recall figures are meaningless against
-  other books until it is rewritten; `eval/coverage.yaml`, which asserts only
-  the organ system, survives a change of edition better.
-
-Everything in `rag/` is book-agnostic.
-
 ## Privacy: what stays here and what leaves
 
 | | stays on this computer | sent to a service |
@@ -828,54 +657,3 @@ Everything in `rag/` is book-agnostic.
 A typed English question in English mode never leaves the computer. The source
 PDFs, the text extracted from them, the indexes, the models, the API keys, the
 usage report and the logs are all gitignored.
-
----
-
-## Sharing it with other people
-
-Everything runs on one machine. To reach it from elsewhere:
-
-- **Same network:** `https://<this machine's IP>:8501`, once the firewall allows the
-  port (`sudo ufw allow 8501/tcp`).
-- **Over the internet from this machine (free):** a tunnel with a stable address,
-  such as **Tailscale Funnel** (a permanent `*.ts.net` address that reconnects after
-  a restart) or an **ngrok** free static domain. Run `./start --http` behind it,
-  since the tunnel supplies the HTTPS. The machine and the app must stay on, so run
-  `./start` as a service rather than in a terminal.
-- **Hosted free:** Oracle Cloud's Always Free ARM server (4 CPUs, 24 GB) runs the
-  whole stack unchanged; Hugging Face Spaces (16 GB, sleeps when idle) also fits.
-  Streamlit Community Cloud and the small free tiers are too small for the local
-  model.
-
-Before making it public: the textbooks and NCCN guides are **copyrighted**, so the
-indexes and source text should not be redistributed without permission; the app has
-**no login**, so anyone with the link can spend Sarvam credit up to the daily cap;
-and keys belong in the host's secrets, never in the repository.
-
----
-
-## Scope and limitations
-
-- This is a reference-retrieval tool over four textbooks, **not a clinical
-  decision support system**, and it carries whatever those editions say.
-- The Patient Portal is **educational information, not medical advice**, and
-  says so on the page. Its safety screen is a pattern match: it catches common
-  phrasings of crisis and emergency, not every possible one. The NCCN
-  Guidelines for Patients are copyrighted and stay local like the books;
-  publishing the portal would need NCCN's permission.
-- Figures and images are not indexed — captions are, prose is. Answers that
-  would depend on reading a figure will abstain.
-- Complex multi-column tables extract imperfectly from PDF. Staging tables are
-  kept whole and cited, but verify against the book before clinical use.
-- **Layer 3 verifies that a citation exists and points at a supplied source.
-  It does not verify the citation is the right one.** A model appending `[1]`
-  to an invented sentence passes. What carries the weight is layer 2 plus the
-  fact that you can open the cited page in one click and check. Attribution
-  that would close this properly was built, measured, and removed — the
-  reasoning is in `rag/guard.verify_answer` and in the measurements doc.
-- Retrieval quality was measured precisely only on tongue cancer (page-level
-  ground truth); coverage across the other 13 organ systems is measured at the
-  coarser organ-system level.
-- `Find` mode can only point at what the pipeline kept. Back-of-book index and
-  bibliography pages are excluded by design, so a lookup takes you to where a
-  term is *discussed*, never to its index entry.
