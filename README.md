@@ -1,22 +1,105 @@
-# Doctor Knowledge & Productivity Assistant
+<div align="center">
 
-A set of six oncology tools that runs on one CPU-only machine: cited answers from
-four textbooks, treatment recommendations from 19 ASCO guidelines, an article
-writer, a literature search, and a patient assistant that takes questions by voice
-or text in 11 Indian languages. Every clinical statement is quoted from or cited to
-a named source, and when the sources do not cover a question the tool says so. The
-language model is a stock open-weight Qwen model run locally: **nothing is trained
-or fine-tuned**, and all medical knowledge comes from the indexed sources.
+# 🩺 Doctor Knowledge & Productivity Assistant
 
-Four of the six tools never send anything off the computer. The Research Platform
-sends its questions to scite.ai, and voice and non-English text go to Sarvam AI (see
-[Privacy](#privacy-what-stays-here-and-what-leaves)). A fuller description of the
-product, its results and its limits is in **[docs/product.txt](docs/product.txt)**.
+### Oncology answers you can check, in the language the patient speaks.
+
+Six tools · four textbooks · 19 ASCO guidelines · 76 NCCN patient guides · 11 Indian languages
+**One CPU-only machine. No GPU. No training. No uncited claims.**
+
+<img src="docs/images/home.png" alt="The home page: a launcher, live status badges and one card per tool" width="900">
+
+</div>
 
 > **Status:** research prototype for a hackathon. Decision support and
 > education only, not medical advice. See [Scope and limitations](#scope-and-limitations).
 
-**Contents:** [The tools](#the-tools) · [Quick start](#quick-start) ·
+## Why this exists
+
+A doctor in a busy clinic wants an answer with a page number, not a paragraph
+that sounds right. A patient wants a plain answer in Tamil or Bengali, not an
+English PDF. Chatbots tend to fail both: they sound sure when they are wrong,
+and they only speak English.
+
+So this one is built around three promises:
+
+1. **Quote it or say nothing.** Every clinical statement is quoted from, or
+   cited to, a named book, guideline or paper, with the page one click away.
+   When the sources do not cover a question, the tool says *"not available"*
+   instead of guessing. Three separate checks enforce this, and every
+   failure we measured was a safe one.
+2. **Speak the patient's language.** Ask by voice or text in any of 11 Indian
+   languages. The answer comes back in that language *and* in English, and can be
+   read aloud.
+3. **Stay on your machine.** The language model is a stock open-weight Qwen
+   model run locally. Four of the six tools never send anything off the computer.
+   The Research Platform queries scite.ai, and voice and non-English text go to
+   Sarvam AI (see [Privacy](#privacy-what-stays-here-and-what-leaves)).
+
+**Nothing is trained or fine-tuned.** All medical knowledge comes from the
+indexed sources, which is why every answer can be traced back to one.
+
+## See it working
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<b>📚 Knowledge Assistant</b><br>
+Ask the textbooks. Each claim carries a <code>[n]</code> marker that opens the book, chapter and page.<br><br>
+<img src="docs/images/knowledge-assistant.png" alt="A cited answer about cisplatin side effects, with sources listed below">
+</td>
+<td width="50%" valign="top">
+<b>🧭 Treatment Guidance</b><br>
+Describe a case. Get the matching ASCO recommendations, ranked, with strength and evidence quality, quoted and never generated.<br><br>
+<img src="docs/images/treatment-guidance.png" alt="Treatment Guidance ranking ASCO recommendations for an EGFR lung cancer case">
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<b>🩺 Patient Portal</b><br>
+Plain-language answers from the NCCN patient guides, with the page they came from. Speak or type in your own language.<br><br>
+<img src="docs/images/patient-portal.png" alt="A patient asking a question and getting a cited answer">
+</td>
+<td width="50%" valign="top">
+<b>📖 Learn mode</b><br>
+Pick any of the 76 guides to read its common questions, key points and glossary. Search works in any language.<br><br>
+<img src="docs/images/patient-learn.png" alt="Learn mode listing the guides by topic">
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<b>✍️ Content Studio</b><br>
+Turn a short brief into a blog post or patient handout, after a few clarifying questions.<br><br>
+<img src="docs/images/content-studio.png" alt="Content Studio's first step: topic, brief and kind of piece">
+</td>
+<td width="50%" valign="top" align="center">
+<b>📱 Works on a phone</b><br>
+The top bar folds into a menu, cards stack, and the microphone sits in the chat box.<br><br>
+<img src="docs/images/phone-home.png" alt="The home page on a phone" width="46%">
+<img src="docs/images/phone-patient.png" alt="The Patient Portal on a phone" width="46%">
+</td>
+</tr>
+</table>
+
+<sub>Screenshots are of the light theme, which is the default. A sun/moon button at top right
+switches to dark. Captured against the running app with the voice service mocked,
+so no credits were spent.</sub>
+
+## The six tools at a glance
+
+| | tool | you give it | you get back |
+|---|---|---|---|
+| 📚 | **Knowledge Assistant** | a clinical question, typed or spoken | a cited answer from four textbooks, or an honest refusal |
+| 🧭 | **Treatment Guidance** | a case in a sentence | ranked ASCO recommendations with the trial figures the guideline prints |
+| 🩺 | **Patient Portal** | a question in 1 of 11 languages | a plain answer in that language and English, read-aloud on request |
+| ✍️ | **Content Studio** | a short brief | a draft blog post or handout to review |
+| 🧪 | **Research Platform** | a research question | a summary of published papers via scite.ai |
+| 🏠 | **Home** | a few words | the right tool, already working on it |
+
+A fuller description of the product, its results and its limits is in
+**[docs/product.txt](docs/product.txt)**.
+
+**Contents:** [See it working](#see-it-working) · [The tools](#the-tools) · [Quick start](#quick-start) ·
 [Configuration](#configuration) · [How it works](#how-it-works) ·
 [Results](#results) · [Repository layout](#repository-layout) ·
 [Documentation](#documentation) · [Testing](#testing) ·
