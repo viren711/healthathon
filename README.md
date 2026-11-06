@@ -2,9 +2,10 @@
 
 # 🩺 Doctor Knowledge & Productivity Assistant
 
-### Oncology answers you can check, in the language the patient speaks.
+### Voice-first oncology answers you can check, for doctors and patients alike.
 
-Six tools · four textbooks · 19 ASCO guidelines · 76 NCCN patient guides · 11 Indian languages
+🎤 **Just speak.** Doctors ask in English or Hindi, patients in any of 11 Indian languages.
+Six tools · four textbooks · 19 ASCO guidelines · 76 NCCN patient guides
 **One CPU-only machine. No GPU. No training. No uncited claims.**
 
 ### 🌐 Try it live: **[v.taila0f4fa.ts.net](https://v.taila0f4fa.ts.net)**
@@ -36,9 +37,11 @@ So this one is built around three promises:
    When the sources do not cover a question, the tool says *"not available"*
    instead of guessing. Three separate checks enforce this, and every
    failure we measured was a safe one.
-2. **Speak the patient's language.** Ask by voice or text in any of 11 Indian
-   languages. The answer comes back in that language *and* in English, and can be
-   read aloud.
+2. **Voice first, for doctors and patients.** A doctor between patients or a patient who
+   finds typing hard can just press the microphone and talk. Doctors speak English or
+   Hindi (Hinglish is fine) to the Knowledge Assistant; patients speak any of 11 Indian
+   languages to the Patient Portal. The answer comes back in the same language *and* in
+   English, and can be read aloud. Typing always works too.
 3. **Stay on your machine.** The language model is a stock open-weight Qwen
    model run locally. Four of the six tools never send anything off the computer.
    The Research Platform queries scite.ai, and voice and non-English text go to
@@ -48,6 +51,20 @@ So this one is built around three promises:
 indexed sources, which is why every answer can be traced back to one.
 
 ## What it does
+
+### 🎤 Voice first: speak, don't type
+
+The microphone is part of the chat box in both question-answering tools, not an add-on.
+
+- **Doctors** speak to the Knowledge Assistant in English or Hindi, including mixed Hindi and English
+  medical terms. Drug names, stages and doses stay in English inside Hindi answers.
+- **Patients and families** speak to the Patient Portal in any of 11 Indian languages, chosen or
+  detected automatically.
+- The question is turned into text, shown back to you ("heard in Tamil" with the English version) so a mis-hearing is visible,
+  then answered and checked by the same pipeline as a typed one. The answer is read aloud on request.
+- Recordings are capped at 30 seconds, and a glowing indicator shows when the microphone is live.
+
+Treatment Guidance, Content Studio and the Research Platform are typed.
 
 ### 📚 Ask the textbooks, get an answer you can check
 
@@ -657,3 +674,19 @@ Tamil (against the offline Sarvam mock, so no credits are spent).
 A typed English question in English mode never leaves the computer. The source
 PDFs, the text extracted from them, the indexes, the models, the API keys, the
 usage report and the logs are all gitignored.
+
+## Clone the repository
+
+```bash
+git clone https://github.com/viren711/healthathon.git
+cd healthathon
+
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+cp .env.example .env     # then add your own SCITE_API_KEY and SARVAM_API_KEY
+```
+
+The textbooks, guideline PDFs, indexes and model weights are not in the repository
+(see [What is in this repository, and what is not](#what-is-in-this-repository-and-what-is-not)).
+Put your own PDFs in `data/` and build the index as described in [Quick start](#quick-start), then run `./start`.
