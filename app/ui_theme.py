@@ -128,3 +128,11 @@ h1 { font-weight: 800 !important; }
 
 def apply() -> None:
     st.html(CSS)
+
+
+def howto(points: list[str], tr=lambda text: text) -> None:
+    """Two or three plain lines at the top of a tool page: what it is and how to
+    start. `tr` is applied to each line, so a translated page (the Patient
+    Portal) can show every line in the reader's language as well."""
+    with st.container(border=True):
+        st.markdown("\n".join(f"- {tr(point)}" for point in points))

@@ -36,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.ui_theme import howto  # noqa: E402
 from rag import guidance  # noqa: E402
 
 TOP = 3  # recommendations shown before "Show more"
@@ -443,8 +444,11 @@ def textbook_fallback(question: str, why: str) -> None:
 
 def main() -> None:
     st.title(":material/clinical_notes: Treatment Guidance")
-    st.caption("Describe the case, or pick the cancer and answer a few questions, and see the "
-               "ASCO guideline recommendations that fit best.")
+    howto([
+        "Finds the ASCO guideline recommendations that fit a case, with their strength and evidence quality.",
+        "Describe the case in a sentence, or pick a cancer and answer a few questions.",
+        "Open **Details** for the guideline's own wording and trial figures.",
+    ])
     st.info(
         "Decision support from published ASCO guidelines, not a treatment plan. Every "
         "recommendation and figure is quoted from the guideline; nothing is generated. "

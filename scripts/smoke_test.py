@@ -87,12 +87,12 @@ def key_checks() -> None:
                 return "ok"
             return fn
 
-        check("Sarvam keys are tried as key, 1, 2, coiffeur",
+        check("Sarvam keys are tried as coiffeur, key, 1, 2",
               [n for n, _ in keyring.usable("sarvam")] ==
-              ["SARVAM_API_KEY", "SARVAM_API_KEY_1", "SARVAM_API_KEY_2", "SARVAM_API_KEY_coiffeur"])
+              ["SARVAM_API_KEY_coiffeur", "SARVAM_API_KEY", "SARVAM_API_KEY_1", "SARVAM_API_KEY_2"])
         r = api._run(call({"k-one"}))
         check("an out-of-credit key hands over to the next", r == "ok" and used == ["k-one", "k-two"]
-              and api.key_label == "SARVAM_API_KEY_1", str(used))
+              and api.key_label == "SARVAM_API_KEY", str(used))
         used.clear()
         api._run(call({"k-one"}))
         check("the spent key is not tried again", used == ["k-two"], str(used))

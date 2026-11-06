@@ -309,7 +309,7 @@ Secrets and machine settings live in `.env` (gitignored; copy
 |---|---|---|
 | `SCITE_API_KEY`, `extra_scite_api` | `.env` | Research Platform's Assistant API; the extra key is used when the first is over its monthly limit |
 | `SCITE_MCP_API_KEY` | `.env` | Research Platform's literature-search fallback (then `extra_scite_api`) |
-| `SARVAM_API_KEY`, `SARVAM_API_KEY_1`, `SARVAM_API_KEY_2`, `SARVAM_API_KEY_coiffeur` | `.env` | voice and languages; tried in that order, and a key that is out of credit is skipped from then on |
+| `SARVAM_API_KEY_coiffeur`, `SARVAM_API_KEY`, `SARVAM_API_KEY_1`, `SARVAM_API_KEY_2` | `.env` | voice and languages; tried in that order, and a key that is out of credit is skipped from then on |
 | `LLM_BASE_URL`, `LLM_MODEL` | `.env` | point the platform at a different OpenAI-compatible model server |
 | `SARVAM_MOCK=1` | environment | offline fake Sarvam, for tests; spends nothing |
 | `config/rag.yaml` | repo | models, retrieval thresholds, refusal messages |
@@ -550,8 +550,8 @@ How it works:
    pressed.
 
 To set it up, add `SARVAM_API_KEY=` to `.env`. Without it, both pages behave
-as before (typed English only). Spare keys are optional: `SARVAM_API_KEY`,
-`SARVAM_API_KEY_1`, `SARVAM_API_KEY_2`, `SARVAM_API_KEY_coiffeur` are tried in that
+as before (typed English only). Spare keys are optional: `SARVAM_API_KEY_coiffeur`,
+`SARVAM_API_KEY`, `SARVAM_API_KEY_1`, `SARVAM_API_KEY_2` are tried in that
 order, and a key refused for credit (HTTP 402, or a 429 that names credit or quota)
 is skipped from then on, across restarts (`artifacts/key_state.json`; delete it to
 try the keys again).

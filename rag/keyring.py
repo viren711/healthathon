@@ -24,7 +24,7 @@ from rag.config import ROOT, _load_dotenv
 
 # Order matters: the first name is tried first. A name that is not set is skipped.
 NAMES = {
-    "sarvam": ["SARVAM_API_KEY", "SARVAM_API_KEY_1", "SARVAM_API_KEY_2", "SARVAM_API_KEY_coiffeur"],
+    "sarvam": ["SARVAM_API_KEY_coiffeur", "SARVAM_API_KEY", "SARVAM_API_KEY_1", "SARVAM_API_KEY_2"],
     "scite": ["SCITE_API_KEY", "extra_scite_api"],
     # The literature-search fallback: its own key first, then the extra one.
     "scite_mcp": ["SCITE_MCP_API_KEY", "extra_scite_api"],

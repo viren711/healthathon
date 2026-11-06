@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.ui_theme import howto  # noqa: E402
 from app.voice_ui import (  # noqa: E402
     Query,
     bilingual,
@@ -489,11 +490,11 @@ def find_mode(scope=None, scope_label="All sections") -> None:
 def main() -> None:
     set_ui_lang("en-IN")  # this page's own text is English only
     st.title(":material/menu_book: Knowledge Assistant")
-    st.caption(
-        "Oncology reference from four indexed textbooks. **Ask** a question and every fact comes back cited, "
-        "or say so if the books do not cover it. **Find** a topic and jump straight "
-        "to the page it is on."
-    )
+    howto([
+        "Answers oncology questions from four textbooks, with the book, chapter and page behind every fact.",
+        "Type or speak your question (English or Hindi), then open a numbered source to see the page.",
+        "Not in the books? It says so instead of guessing. Use **Find a topic** to see where a subject is discussed.",
+    ])
 
     # Section first: it needs only taxonomy.json, so it is usable at once
     # while the index and models load below.

@@ -258,8 +258,8 @@ Hindi patient answer is shown in Hindi followed by the English.
 ## Several keys
 
 `.env` can hold spare keys. They are tried in this order and the first one
-with credit is used: `SARVAM_API_KEY`, `SARVAM_API_KEY_1`,
-`SARVAM_API_KEY_2`, then `SARVAM_API_KEY_coiffeur`. When Sarvam refuses a key as
+with credit is used: `SARVAM_API_KEY_coiffeur`, `SARVAM_API_KEY`,
+`SARVAM_API_KEY_1`, then `SARVAM_API_KEY_2`. When Sarvam refuses a key as
 out of credit (402, 401/403, or a 429 that names credit or quota) the key is
 remembered in `artifacts/key_state.json` (a short fingerprint, never the key)
 and skipped from then on, across restarts. A plain "too many requests" 429 does

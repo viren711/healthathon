@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.ui_theme import howto  # noqa: E402
 from rag.llm import LLMClient, LLMError  # noqa: E402
 from rag.scite import SciteClient, SciteError, SciteMCPClient  # noqa: E402
 
@@ -227,11 +228,11 @@ def _render_history() -> None:
 
 def render() -> None:
     st.title(":material/biotech: Research Platform")
-    st.caption(
-        "Ask a research question. Answers are grounded in the scholarly "
-        "literature via Scite and shown with their references. Questions on "
-        "this page are sent to scite.ai; the other tools stay on this computer."
-    )
+    howto([
+        "Answers research questions from published papers, with the references shown.",
+        "Type your question, then open the cited papers to check the evidence.",
+        "Questions on this page are sent to scite.ai; the other tools stay on this computer.",
+    ])
 
     client = SciteClient.from_env()
     mcp_client = SciteMCPClient.from_env()

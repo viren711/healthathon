@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.ui_theme import howto  # noqa: E402
 from writer import studio  # noqa: E402
 
 K = "studio_"  # every session key this page owns, so nothing collides with other pages
@@ -346,10 +347,11 @@ def step_draft(model_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 st.title(":material/edit_note: Content Studio")
-st.caption(
-    "Describe the piece you want to write. You will get a few questions, then a "
-    "draft to review, edit and publish."
-)
+howto([
+    "Writes a draft blog post, patient handout or article from a short brief.",
+    "Enter a topic, answer a few optional questions, then review and edit the draft.",
+    "The writer model runs on this computer.",
+])
 
 model = sidebar()
 if model is not None:

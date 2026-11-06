@@ -305,7 +305,7 @@ def test_research_page(AppTest) -> None:
           [sb.label for sb in at.sidebar.selectbox] == ["Answer length", "Citation style"],
           str([sb.label for sb in at.sidebar.selectbox]))
     check("the page says questions leave the machine",
-          any("scite.ai" in c.value for c in at.caption))
+          any("scite.ai" in m.value for m in at.markdown))
     # An empty question must be stopped before any network call.
     at.button(key="send_scite").click().run()
     check("an empty question is refused",
@@ -526,10 +526,10 @@ def test_voice_offline(AppTest) -> None:
     clear = [b.label for b in hi.button if b.label.startswith("Clear conversation")]
     check("in Hindi a button is English with Hindi beneath it",
           bool(clear) and "\n\n[hi] Clear conversation" in clear[0], str(clear))
-    check("in Hindi the title and intro are English with Hindi beneath",
+    check("in Hindi the title and the how-to box are English with Hindi beside them",
           any("Patient Portal" in t.value and "[hi]" in t.value for t in hi.title)
-          and any("[hi]" in c.value and "Answers and reading material" in c.value
-                  for c in hi.caption),
+          and any("[hi]" in m.value and "Plain-language answers" in m.value
+                  for m in hi.markdown),
           str([t.value for t in hi.title]))
     check("the Ask/Learn switch keeps its English values", hi.session_state["patient_mode"] == "Ask a question")
 

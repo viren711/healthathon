@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.ui_theme import howto  # noqa: E402
 from app.voice_ui import (  # noqa: E402
     AUTO,
     Query,
@@ -76,6 +77,12 @@ MODES = ["Ask a question", "Learn"]
 # Everything fixed that the page says, translated in one parallel batch the
 # first time a language is chosen (saved to disk after that). In English it is
 # all unused. Names, guide titles and the NCCN text itself stay English.
+HOWTO = [
+    "Plain-language answers for patients and families, from the NCCN Guidelines for Patients.",
+    "Pick your language, then type or press the microphone and speak. Choose **Learn** to read the guides.",
+    "Press **Listen** to hear an answer read aloud.",
+]
+
 UI_STRINGS = [
     "Patient Portal",
     "Answers and reading material for patients and families, from the NCCN "
@@ -641,7 +648,7 @@ def main() -> None:
     lang = _answer_lang() if voice_available() else "en-IN"
     set_ui_lang(lang)
     name = language_name(lang, native=False)
-    prefetch_ui(UI_STRINGS + [disclaimer, f"Listen ({name})", f"Show in {name}",
+    prefetch_ui(UI_STRINGS + HOWTO + [disclaimer, f"Listen ({name})", f"Show in {name}",
                               "Listen (English)"])
     # A page with a chat box opens scrolled to its bottom, which hides the
     # title and the language picker under the navigation bar. Once per page
@@ -659,11 +666,7 @@ def main() -> None:
     </script>""", unsafe_allow_javascript=True)
     st.title(":material/health_and_safety: " + ui_text("Patient Portal", inline=True))
     language_row()
-    st.caption(ui_text(
-        "Answers and reading material for patients and families, from the "
-        "NCCN Guidelines for Patients — detection, prevention, treatment, side "
-        "effects, and coping with cancer."
-    ))
+    howto(HOWTO, tr=lambda text: ui_text(text, inline=True))
     st.info(ui_text(disclaimer), icon=":material/info:")
 
     library = load_library()
