@@ -8,7 +8,9 @@ returned papers are summarised by the local reference model, citing them as
 [n]. Keys are read from .env and never reach the browser.
 
 Unlike the other tools, the question leaves this machine: it is sent to
-scite.ai. The page says so.
+scite.ai. The page says so. Before it goes, rag/deid.py anonymises patient details
+(name, age, address, dates, IDs ...) in the question, the chat history and
+the answer that comes back.
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.ui_theme import howto  # noqa: E402
+from rag import deid  # noqa: E402
 from rag.llm import LLMClient, LLMError  # noqa: E402
 from rag.scite import SciteClient, SciteError, SciteMCPClient  # noqa: E402
 
@@ -223,6 +226,8 @@ def _render_history() -> None:
                 st.markdown(turn["content"])
             if turn.get("error"):
                 st.error(turn["error"])
+            if turn.get("privacy_note"):
+                st.caption(":material/shield: " + turn["privacy_note"])
             _render_references(turn.get("references", []))
 
 
@@ -231,7 +236,7 @@ def render() -> None:
     howto([
         "Answers research questions from published papers, with the references shown.",
         "Type your question, then open the cited papers to check the evidence.",
-        "Questions on this page are sent to scite.ai; the other tools stay on this computer.",
+        "Patient details such as name, age and address are anonymised before anything is sent to scite.ai; the other tools stay on this computer.",
     ])
 
     client = SciteClient.from_env()
@@ -281,9 +286,19 @@ def render() -> None:
         st.warning("Enter a question before sending.")
         return
 
+    # Guardrail (rag/deid.py): identifiers are removed here, before the question is
+    # shown, stored in the chat, summarised or sent; rag/scite.py scrubs again at
+    # the point of sending.
+    question, removed = deid.scrub(question.strip())
+    if not deid.has_content(question):
+        st.error("That question is only personal details, so nothing was sent. Ask the research "
+                 "question without the patient's name, numbers or dates.")
+        return
+    privacy_note = (f"Patient details anonymised before sending to scite.ai: {deid.describe(removed)}." if removed else None)
+
     _init_state()
     error = None
-    st.session_state["scite_history"].append({"role": "user", "content": question.strip()})
+    st.session_state["scite_history"].append({"role": "user", "content": question})
     with st.chat_message("assistant"):
         with st.spinner("Searching Scite..."):
             if not client:
@@ -341,7 +356,7 @@ def render() -> None:
                     except LLMError as exc:
                         error = f"Local summary failed ({exc}); showing Scite's own output."
                     else:
-                        content = summary
+                        content = deid.scrub(summary, keep_links=True)[0]
     st.session_state["scite_history"].append(
         {
             "role": "assistant",
@@ -350,6 +365,7 @@ def render() -> None:
             "details": details,
             "status": status,
             "error": error,
+            "privacy_note": privacy_note,
         }
     )
     st.session_state["scite_question_nonce"] = question_nonce + 1

@@ -55,7 +55,9 @@ coordinate them. The memory reasoning is in
 
 The **Research Platform** is the one tool that leaves the machine. Its page
 sends the question to scite.ai (the Assistant API, falling back to the MCP
-literature search) and then asks the local reference model, through the same
+literature search) after `rag/deid.py` has anonymised patient details (name, age, address, dates, IDs) in the question,
+the chat history and the returned answer (done inside `rag/scite.py`, where the
+request is built, so no caller can skip it) and then asks the local reference model, through the same
 router, to summarise the returned abstracts and excerpts with `[n]` citations.
 The API keys stay server-side in `.env`.
 

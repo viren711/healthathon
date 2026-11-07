@@ -114,7 +114,8 @@ to review, edit and publish. It uses a separate writer model, which is swapped i
 ### 🧪 Research Platform and a home page that gets you started
 
 The Research Platform sends a question to scite.ai, then summarises the returned papers locally with numbered
-citations. The home page has a launcher: pick a task, type or choose an example, and you land in that tool with
+citations. A de-identification guardrail anonymises patient details (name, age, address, dates, IDs) in
+the question, and in the answer that comes back, before anything leaves the machine. The home page has a launcher: pick a task, type or choose an example, and you land in that tool with
 the work already started.
 
 ### 📱 Built for phones too
@@ -474,7 +475,15 @@ if it belongs to a different plan.
 
 **Timing:** ~3 s for the search, then ~2 minutes for the local summary of ten
 papers on this CPU. **Privacy:** unlike the other tools, the question text
-is sent to scite.ai.
+is sent to scite.ai, but only after `rag/deid.py` has anonymised patient details: names become `[NAME]`,
+addresses `[ADDRESS]`, dates `[DATE]`, and an age is generalised to a decade
+("54-year-old" becomes `[AGE 50s]`, so the clinical picture survives; "aged 18-65" and "over 65"
+are left alone). Phone, Aadhaar, ID and email patterns are removed as well. It runs in the client that builds the request, on the
+question, the earlier chat turns and the returned answer; a question made only of
+identifiers is refused, not sent; the page tells the user what was removed. It is
+pattern-based, so it cannot catch a bare name with no title or cue ("Ramesh has stage
+III cancer") or a place name, and it cannot be turned off. Do not type patient
+details into research questions regardless.
 
 ---
 
@@ -668,7 +677,7 @@ Tamil (against the offline Sarvam mock, so no credits are spent).
 | | stays on this computer | sent to a service |
 |---|---|---|
 | Knowledge Assistant (English), Content Studio, Treatment Guidance, Patient Portal (English) | everything: the sources, indexes, models, questions and answers | nothing |
-| Research Platform | the local summary | the question and conversation, to scite.ai |
+| Research Platform | the local summary, and every identifier (removed by `rag/deid.py`) | the de-identified question and conversation, to scite.ai |
 | Voice and languages | the checked English answer, retrieval, safety screening | a recording, or text in another language, or text being translated or read aloud, to Sarvam AI |
 
 A typed English question in English mode never leaves the computer. The source

@@ -7,10 +7,10 @@ import os
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
-from rag import keyring
+from rag import deid, keyring
 from rag.config import _load_dotenv
 
 
@@ -28,6 +28,22 @@ class SciteAnswer:
     content: str
     references: list[dict[str, Any]]
     details: Any = None
+
+
+def _outgoing(text: str) -> str:
+    """The only form of a question that may leave this machine (rag/deid.py).
+    Refuses, rather than sends, a question that was nothing but identifiers."""
+    clean, _ = deid.scrub(text)
+    if not deid.has_content(clean):
+        raise SciteError("The question contains only personal details, so nothing was sent. "
+                         "Ask the research question without names, numbers or dates of the patient.")
+    return clean
+
+
+def _incoming(answer: SciteAnswer) -> SciteAnswer:
+    """The answer, with any identifier in its prose removed. Links stay (they are
+    citations); the reference list is published literature and is left as is."""
+    return replace(answer, content=deid.scrub(answer.content, keep_links=True)[0])
 
 
 class SciteClient:
@@ -85,8 +101,12 @@ class SciteClient:
         citation_style: str = "apa",
         use_references: bool = True,
     ) -> SciteAnswer:
+        # Guardrail: nothing identifying leaves this machine, in the question or in
+        # the earlier turns (rag/deid.py). Done here, at the one place that builds
+        # the outgoing request, so no caller can bypass it.
+        question = _outgoing(question)
         turns = [
-            {"role": turn["role"], "content": turn["content"]}
+            {"role": turn["role"], "content": deid.scrub(turn["content"], keep_links=turn["role"] == "assistant")[0]}
             for turn in (history or [])
             if turn.get("role") in {"user", "assistant"} and turn.get("content")
         ]
@@ -122,7 +142,7 @@ class SciteClient:
             result = self._request("GET", f"/api_partner/assistant/tasks/{task_id}")
             status = str(result.get("status", "")).upper()
             if status == "SUCCESS":
-                return self._answer_from(result)
+                return _incoming(self._answer_from(result))
             if status in {"FAILURE", "FAILED", "ERROR", "CANCELED", "CANCELLED"}:
                 detail = result.get("error") or result.get("info") or status
                 raise SciteError(f"Scite assistant task failed: {detail}")
@@ -201,6 +221,7 @@ class SciteMCPClient:
                          "(delete artifacts/key_state.json to retry).", 429)
 
     def _search(self, question: str, limit: int = 10) -> SciteAnswer:
+        question = _outgoing(question)  # guardrail: see rag/deid.py
         body = self._request(
             {
                 "jsonrpc": "2.0",
@@ -224,7 +245,7 @@ class SciteMCPClient:
             raise SciteError(f"Scite MCP error: {result.get('content') or result}")
         references = self._references_from(result)
         content = f"Scite MCP found {len(references)} relevant source(s) for this question."
-        return SciteAnswer(content, references, details=result)
+        return _incoming(SciteAnswer(content, references, details=result))
 
     def _request(self, payload: dict[str, Any]) -> dict[str, Any]:
         request = urllib.request.Request(

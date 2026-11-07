@@ -256,7 +256,12 @@ evidence check plus the fact that the cited page is one click away.
      - Knowledge Assistant in English, Content Studio, Treatment Guidance and the
        Patient Portal in English: nothing is sent anywhere.
    Leaves the computer
-     - Research Platform: the question and the conversation, to scite.ai.
+     - Research Platform: the question and the conversation, to scite.ai, after a
+       de-identification guardrail (rag/deid.py) has anonymised patient details (names,
+       age, address, dates, IDs) in the question, the earlier turns and the answer
+       that comes back. An age is generalised to a decade, not dropped. It is pattern-based: a bare
+       name with no title or cue is not caught, so patient details should still
+       not be typed in.
      - Voice and languages: a recording, or text in a language other than English,
        or English text that is being translated or read aloud, to Sarvam AI. A
        typed English question in English mode never leaves.

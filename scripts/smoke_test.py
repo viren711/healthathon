@@ -61,7 +61,7 @@ def key_checks() -> None:
 
     from rag import keyring
     from rag.sarvam import _LiveAPI
-    from rag.scite import SciteClient, SciteError
+    from rag.scite import SciteAnswer, SciteClient, SciteError
 
     names = ("KEY_STATE_FILE", *keyring.NAMES["sarvam"], *keyring.NAMES["scite"])
     saved = {k: os.environ.get(k) for k in names}
@@ -122,7 +122,7 @@ def key_checks() -> None:
             tried.append(self.api_key)
             if self.api_key == "s-one":
                 raise SciteError("HTTP 429", 429, b'{"message":"monthly search limit"}')
-            return "answer"
+            return SciteAnswer("answer", [])
 
         orig, SciteClient._ask = SciteClient._ask, fake_ask
         try:
@@ -131,13 +131,76 @@ def key_checks() -> None:
         finally:
             SciteClient._ask = orig
         check("Scite: the extra key answers once the first is over its monthly limit, and the first is skipped after",
-              got == ["answer", "answer"] and tried == ["s-one", "s-two", "s-two"], str(tried))
+              [g.content for g in got] == ["answer", "answer"] and tried == ["s-one", "s-two", "s-two"], str(tried))
     finally:
         for k, v in saved.items():
             if v is None:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+
+
+def deid_checks() -> None:
+    """The scite.ai guardrail (rag/deid.py): nothing identifying goes out or comes back."""
+    import json
+
+    from rag import deid
+    from rag.scite import SciteClient, SciteError, SciteMCPClient
+
+    print("De-identification guardrail")
+    case = ("Mr. Ramesh Sharma (phone 9876543210, ramesh.s@gmail.com, Aadhaar 2345 6789 0123, "
+            "MRN: AB123456, DOB 12/03/1968) has EGFR-mutant lung cancer. Is osimertinib effective?")
+    leaks = ["Ramesh", "Sharma", "9876543210", "ramesh.s", "2345", "6789", "AB123456", "12/03/1968"]
+    clean, found = deid.scrub(case)
+    check("every identifier in the question is removed", not any(x in clean for x in leaks), clean)
+    check("the research question itself is kept", "EGFR-mutant lung cancer" in clean and "osimertinib" in clean, clean)
+    sci = "pan-cancer EGFR 10 mg HR 0.62 (95% CI 0.48-0.80) NCT01234567 after March 2019 in patients aged 18-65, median age 62, over 65 years"
+    check("ordinary scientific text is left untouched", deid.scrub(sci)[0] == sci)
+    check("a link in an answer is kept as a citation", "doi.org" in deid.scrub("see https://doi.org/10.1/x", keep_links=True)[0])
+    check("a patient's age is generalised to a decade, 90+ and children banded",
+          deid.scrub("a 54-year-old man")[0] == "a [AGE 50s] man" and "[AGE 90+]" in deid.scrub("a 93 year old")[0]
+          and "[AGE under 18]" in deid.scrub("child aged 7")[0])
+    check("the notice names name, age and address, not phone numbers",
+          deid.describe(deid.scrub("Mr. Rao, a 54-year-old, Flat 12B, MG Road, phone 9876543210")[1]) == "name, age, address, IDs and contact details")
+    check("a question that is only identifiers has nothing to send", not deid.has_content(deid.scrub("Mr. Ramesh 9876543210")[0]))
+
+    # What really goes over the wire: capture the request body instead of sending it.
+    sent: list = []
+    c = SciteClient("k-test")
+    def fake(method, path, payload=None):
+        sent.append(payload)
+        if method == "POST":
+            return {"id": "t1"}
+        return {"status": "SUCCESS", "content": "Contact the author at dr.x@hospital.org or 9123456789. See https://doi.org/10.1/x",
+                "references": []}
+    c._request = fake  # type: ignore[method-assign]
+    history = [{"role": "user", "content": "Patient name is Anita Rao, 044-24123456"},
+               {"role": "assistant", "content": "Earlier answer"}]
+    try:
+        ans = c._ask(case, history)
+        wire = json.dumps(sent[0])
+        check("nothing identifying is in the request sent to scite.ai",
+              not any(x in wire for x in leaks + ["Anita", "Rao", "24123456"]), wire[:120])
+        check("earlier turns are scrubbed too", "[NAME]" in wire and "[PHONE]" in wire)
+        check("an identifier in the returned answer is removed",
+              "dr.x@" not in ans.content and "9123456789" not in ans.content and "doi.org" in ans.content, ans.content)
+    except Exception as exc:  # noqa: BLE001
+        check("the guarded request runs", False, repr(exc))
+    try:
+        c._ask("Mr. Ramesh 9876543210", [])
+        check("an identifiers-only question is refused, not sent", False)
+    except SciteError:
+        check("an identifiers-only question is refused, not sent", True)
+
+    sent2: list = []
+    m = SciteMCPClient("k-test")
+    m._request = lambda payload: (sent2.append(payload) or {"result": {"content": []}})  # type: ignore[method-assign]
+    try:
+        m._search(case)
+    except Exception:  # noqa: BLE001
+        pass
+    wire2 = json.dumps(sent2[0]) if sent2 else ""
+    check("the literature-search path is scrubbed too", bool(wire2) and not any(x in wire2 for x in leaks), wire2[:120])
 
 
 def main() -> int:
@@ -513,6 +576,8 @@ def main() -> int:
     voice_checks(StubLLM)
     print()
     key_checks()
+    print()
+    deid_checks()
 
     # ---- summary ----------------------------------------------------------
     print()

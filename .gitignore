@@ -23,6 +23,7 @@ corpus/
 artifacts/
 *.pdf
 *.epub
+presentation/
 
 # -----------------------------------------------------------------------------
 # 2. Large downloads and archives
