@@ -19,7 +19,7 @@ Voice and the Patient Portal's other-language answers need the machine's Sarvam 
 
 </div>
 
-**Contents:** [What it does](#what-it-does) · [Architecture](#solution-architecture) · [Quick start](#quick-start) ·
+**Contents:** [What it does](#what-it-does) · [Architecture](#solution-architecture) · [Demo video](#demo-video) · [Quick start](#quick-start) ·
 [Configuration](#configuration) · [How it works](#how-it-works) · [Results](#results) ·
 [Documentation](#documentation) · [Testing](#testing) · [Privacy](#privacy-what-stays-here-and-what-leaves)
 
@@ -150,6 +150,12 @@ They were captured against the running app with the voice service mocked, so no 
    patient guides (6,267 passages) are indexed on the machine. Only the Research Platform's questions go to scite.ai.
 
 More detail is in **[docs/architecture.md](docs/architecture.md)** and **[docs/product.txt](docs/product.txt)**.
+
+## Demo video
+
+A short walkthrough of the app in action.
+
+**[▶ Watch the demo video](https://drive.google.com/file/d/1-7HdMRq1J1P3qzzvN1O2CJriFkBaJJlK/view?usp=sharing)**
 
 ## The tools
 
