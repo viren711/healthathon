@@ -107,3 +107,10 @@ tmp/
 # Claude Code agent configuration: local tooling, not part of the codebase.
 .claude/
 *.zip
+
+# Working files for the submission. Only the final PDFs in reports/ are kept in the
+# repository (the !-rules below override the *.pdf rule above).
+report/
+presentation/
+!reports/
+!reports/*.pdf
